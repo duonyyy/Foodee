@@ -1,19 +1,11 @@
-# Foodee CI/CD
+# Foodee CI for the demo
 
-The production deployment procedure and release gates are in
-[docs/PRODUCTION_DEPLOYMENT.md](docs/PRODUCTION_DEPLOYMENT.md).
+The GitHub workflow `.github/workflows/ci.yml` checks source, builds, tests,
+and validates the local and production Compose configuration. It does not
+deploy the application.
 
-- `.github/workflows/ci.yml` validates source and both local/production Compose
-  configurations. It does not deploy.
-- `.github/workflows/cd.yml` is **manual only**. It builds five immutable
-  `sha-<commit>` images, checks production prerequisites on the server, and
-  deploys that exact tag with `compose.prod.yml`.
-- `docker-compose.yml` is the local development stack. Use `compose.prod.yml`
-  alone for production. Do not combine the two files.
-- A fresh root checkout must include `core-api`, `web-client`,
-  `chatbot-service`, and `vision-service` before CD can build images. The
-  workspace is being prepared as one release repository; verify these files
-  are actually tracked and available from a fresh checkout before triggering CD.
+Run the demo with the local `docker-compose.yml` stack. The
+`compose.prod.yml` file and [production deployment notes](docs/PRODUCTION_DEPLOYMENT.md)
+are retained as references for future work.
 
-No automatic deployment is enabled until DNS, TLS, credentials, backup/restore,
-and the source checkout gate in the runbook are complete.
+There is no CD workflow or automatic deployment in this repository.

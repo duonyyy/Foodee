@@ -11,17 +11,16 @@ publishes only Nginx on 80/443.
 Do not run the production stack until all of these are true:
 
 1. One release checkout contains **all five image build contexts** and the
-   frontend lockfile. The manual CD workflow fails if any build context is
-   absent.
+   frontend lockfile. Build and publish the five application images before
+   attempting a manual deployment.
 2. DNS for `APP_DOMAIN`, `API_DOMAIN`, and `STORAGE_DOMAIN` points at the host.
    A certificate covering all three names and its private key are stored as
    `deploy/tls/fullchain.pem` and `deploy/tls/privkey.pem`. They are ignored by
    Git. Renew the certificate before expiry and reload Nginx after renewal.
 3. Copy `.env.production.example` to `.env.production` **on the server**, fill
    every credential, set `chmod 600 .env.production deploy/tls/privkey.pem`,
-   and configure the `production` GitHub environment. Set variables
-   `APP_DOMAIN`, `API_DOMAIN`, `STORAGE_DOMAIN`, and optional public client IDs.
-   Set secrets `SSH_HOST`, `SSH_USER`, `SSH_KEY`, `DEPLOY_PATH`.
+   and set the application domains in that file. Do not commit the populated
+   file or the certificate key.
 4. Supply live Mapbox, MoMo, and VNPay credentials and endpoints. The current
    API initializes those integrations on startup. Do not point production at
    the providers' sandbox endpoints. Test a payment webhook and callback.
@@ -33,6 +32,10 @@ Do not run the production stack until all of these are true:
    alone are not backups. Record a recovery point and recovery time target.
 
 ## Before deploying
+
+There is no CD workflow. This runbook is for a possible future manual release.
+The five application images named by `GHCR_NAMESPACE` and `IMAGE_TAG` must
+already exist in GHCR before running the commands below.
 
 The server must have Docker Engine, Compose v2, Python 3, OpenSSL, access to
 GHCR, and a clean checkout at the selected Git commit. Put the TLS files on
@@ -51,13 +54,10 @@ public URLs, exposed ports, image references, certificate names and expiry,
 and the certificate/private-key pair. It does not verify that upstream APIs,
 DNS, payment callbacks, backups, or the chatbot model are operational.
 
-For automated delivery, trigger **CD - Foodee production** manually on the
-release branch. It builds `sha-<commit>` images, deploys those commit-tagged
-images, runs preflight on the host, and waits for health checks. GHCR tags can
-be overwritten; pin digests for deployments that require image immutability.
-The workflow does not remove images or volumes. Promotion and rollback require
-an operator to pick an image tag and check migration compatibility; database migrations are not
-automatically reversible.
+The commands above are manual. GHCR tags can be overwritten; pin digests for
+deployments that require image immutability. Promotion and rollback require an
+operator to pick an image tag and check migration compatibility; database
+migrations are not automatically reversible.
 
 ## Backup and recovery checks
 
