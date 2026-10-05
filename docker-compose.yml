@@ -1,0 +1,373 @@
+name: foodee
+
+x-backend: &backend
+  image: foodee/backend:${BACKEND_IMAGE_TAG:-dev}
+  build:
+    context: ./core-api
+    dockerfile: docker/Dockerfile
+  networks:
+    - foodee-network
+
+services:
+  # ============================================================================
+  # Infrastructure Services
+  # ============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: foodee-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-123456}
+      POSTGRES_DB: ${DB_NAME:-foodee_db}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - foodee-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: foodee-redis
+    restart: unless-stopped
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--maxmemory",
+        "256mb",
+        "--maxmemory-policy",
+        "noeviction",
+      ]
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - foodee-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    build:
+      context: ./core-api
+      dockerfile: docker/minio.Dockerfile
+      args:
+        MINIO_RELEASE: RELEASE.2025-10-15T17-29-55Z
+    image: foodee/minio:RELEASE.2025-10-15T17-29-55Z
+    container_name: foodee-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-miniouser}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-miniopassword}
+    ports:
+      - "127.0.0.1:${MINIO_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - foodee-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # Application Services
+  # ============================================================================
+  migrate:
+    <<: *backend
+    container_name: foodee-migrate
+    command: npm run migration:run:compiled
+    env_file:
+      - ./core-api/.env
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-123456}
+      - DB_NAME=${DB_NAME:-foodee_db}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *backend
+    container_name: foodee-api
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3001}:3001"
+    env_file:
+      - ./core-api/.env
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3001
+      - API_URL=http://localhost:3001
+      - FRONTEND_URL=http://localhost:3000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-123456}
+      - DB_NAME=${DB_NAME:-foodee_db}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - AI_SERVER_URL=http://ai-server:8000
+      - FOOD_AI_URL=http://food-ai:5000
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_USE_SSL=false
+      - QUEUE_PROCESSOR_ENABLED=false
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ai-server:
+        condition: service_healthy
+      food-ai:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3001/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  worker:
+    <<: *backend
+    container_name: foodee-worker
+    command: npm run start:worker
+    restart: unless-stopped
+    env_file:
+      - ./core-api/.env
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3001
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-123456}
+      - DB_NAME=${DB_NAME:-foodee_db}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - AI_SERVER_URL=http://ai-server:8000
+      - FOOD_AI_URL=http://food-ai:5000
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_USE_SSL=false
+      - QUEUE_PROCESSOR_ENABLED=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ai-server:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "process.kill(1, 0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ============================================================================
+  # AI Microservices
+  # ============================================================================
+  ai-server:
+    image: foodee/ai-server:${AI_SERVER_IMAGE_TAG:-dev}
+    container_name: foodee-chatbot
+    build:
+      context: ./chatbot-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "8000"
+    env_file:
+      - ./chatbot-service/.env
+    environment:
+      AI_ALLOWED_ORIGINS: "${AI_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - foodee-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready')",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  food-ai:
+    image: foodee/food-ai:${FOOD_AI_IMAGE_TAG:-dev}
+    container_name: foodee-vision
+    build:
+      context: ./vision-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${FOOD_AI_PORT:-5000}:5000"
+    environment:
+      - FOOD_ALLOWED_ORIGINS=${FOOD_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001}
+      - FOOD_UPLOAD_FOLDER=/app/runtime
+      - FOOD_DETECTION_MODEL=models/detection/detection.pt
+      - FOOD_CLASSIFIER_MODEL=models/classification/classifier_b2_finetuned_from_pth_float16.tflite
+      - FOOD_DETECTION_CONFIDENCE=0.1
+      - FOOD_DETECTION_IOU=0.35
+      - FOOD_CLASSIFICATION_CONFIDENCE=0.5
+      - FOOD_VIDEO_TARGET_FPS=6
+      - FOOD_TFLITE_THREADS=4
+      - FOOD_TRACK_IOU_THRESHOLD=0.3
+      - FOOD_TRACK_MAX_MISSED=3
+      - FOOD_CACHE_SIZE=1024
+      - FOOD_CACHE_TTL=60
+      - FOOD_LETTERBOX_ENABLED=false
+      - GUNICORN_BIND=0.0.0.0:5000
+      - GUNICORN_WORKERS=2
+      - GUNICORN_THREADS=2
+      - GUNICORN_TIMEOUT=120
+    volumes:
+      - food_ai_runtime:/app/runtime
+    networks:
+      - foodee-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ============================================================================
+  # Frontend Client
+  # ============================================================================
+  frontend:
+    image: foodee/frontend:${FRONTEND_IMAGE_TAG:-dev}
+    container_name: foodee-frontend
+    build:
+      context: ./web-client
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://localhost:3001}"
+        NEXT_PUBLIC_FOOD_AI_URL: "${NEXT_PUBLIC_FOOD_AI_URL:-http://localhost:5000}"
+        NEXT_PUBLIC_GOOGLE_REDIRECT_URI: "${NEXT_PUBLIC_GOOGLE_REDIRECT_URI:-http://localhost:3000/api/auth/callback/google}"
+        NEXT_PUBLIC_CLIENT_ID: "${NEXT_PUBLIC_CLIENT_ID:-}"
+        NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: "${NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN:-}"
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    env_file:
+      - ./web-client/.env.local
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      INTERNAL_API_URL: http://api:3001
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-miniouser}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-miniopassword}
+      MINIO_BUCKET: ${MINIO_BUCKET:-foodee}
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
+    depends_on:
+      api:
+        condition: service_healthy
+      food-ai:
+        condition: service_healthy
+    networks:
+      - foodee-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================================================
+  # Nginx Gateway & Reverse Proxy
+  # ============================================================================
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: foodee-nginx
+    restart: unless-stopped
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/html:/usr/share/nginx/html:ro
+    depends_on:
+      frontend:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+      ai-server:
+        condition: service_healthy
+      food-ai:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - foodee-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+# ==============================================================================
+# Persistent Volumes
+# ==============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  food_ai_runtime:
+    driver: local
+
+# ==============================================================================
+# Networks
+# ==============================================================================
+networks:
+  foodee-network:
+    name: foodee-network
+    driver: bridge

@@ -1,0 +1,37 @@
+services:
+  foodee-fe:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+        NEXT_PUBLIC_FOOD_AI_URL: ${NEXT_PUBLIC_FOOD_AI_URL:-http://localhost:5000}
+        NEXT_PUBLIC_GOOGLE_REDIRECT_URI: ${NEXT_PUBLIC_GOOGLE_REDIRECT_URI:-http://localhost:3000/api/auth/callback/google}
+        NEXT_PUBLIC_CLIENT_ID: ${NEXT_PUBLIC_CLIENT_ID}
+        NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN:-${MAPBOX_ACCESS_TOKEN}}
+    image: foodee-fe:latest
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    env_file:
+      - .env.local
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - INTERNAL_API_URL=http://api:3001
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+    networks:
+      - foodee-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  foodee-network:
+    name: foodee-network
+    external: true

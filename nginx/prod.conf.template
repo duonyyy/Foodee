@@ -1,0 +1,98 @@
+# Rendered by the official nginx image from APP_DOMAIN, API_DOMAIN and
+# STORAGE_DOMAIN. All three names must be covered by the mounted certificate.
+server {
+    listen 80 default_server;
+    server_name _;
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "OK\n";
+    }
+    location / { return 444; }
+}
+
+server {
+    listen 80;
+    server_name ${APP_DOMAIN} ${API_DOMAIN} ${STORAGE_DOMAIN};
+    location / { return 308 https://$host$request_uri; }
+}
+
+server {
+    listen 443 ssl;
+    server_name ${APP_DOMAIN};
+    ssl_certificate /etc/nginx/tls/fullchain.pem;
+    ssl_certificate_key /etc/nginx/tls/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    # Next.js owns /api/media/* and /api/chat. Do not route /api/* to NestJS.
+    location /food-ai/ {
+        limit_req zone=ai_limit burst=20 nodelay;
+        rewrite ^/food-ai/(.*)$ /$1 break;
+        proxy_pass http://vision_upstream;
+        proxy_http_version 1.1;
+        client_max_body_size 100M;
+        proxy_read_timeout 300s;
+    }
+    location / {
+        proxy_pass http://frontend_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name ${API_DOMAIN};
+    ssl_certificate /etc/nginx/tls/fullchain.pem;
+    ssl_certificate_key /etc/nginx/tls/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options nosniff always;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    location / {
+        limit_req zone=api_limit burst=50 nodelay;
+        proxy_pass http://api_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_read_timeout 300s;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name ${STORAGE_DOMAIN};
+    ssl_certificate /etc/nginx/tls/fullchain.pem;
+    ssl_certificate_key /etc/nginx/tls/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options nosniff always;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    # Only the S3 API is exposed; the MinIO administration console stays private.
+    location / {
+        proxy_pass http://minio_s3_upstream;
+        proxy_http_version 1.1;
+        client_max_body_size 100M;
+        proxy_request_buffering off;
+        proxy_read_timeout 300s;
+    }
+}

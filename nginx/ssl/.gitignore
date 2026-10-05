@@ -1,0 +1,5 @@
+# Keep ssl directory in git tracking while excluding actual certificate keys
+*.pem
+*.crt
+*.key
+!.gitkeep

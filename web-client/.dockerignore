@@ -1,0 +1,37 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js build output
+.next
+out
+dist
+
+# Environment files — never bake secrets into the image
+.env
+.env.*
+!.env.example
+!env.local.example
+
+# Testing
+coverage
+.nyc_output
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Git
+.git
+.gitignore
+
+# Misc
+*.md
+*.log
+.prettierignore
+.hintrc
+eslint.config.mjs

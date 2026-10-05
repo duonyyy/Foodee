@@ -1,0 +1,419 @@
+import { Order } from '@/interface';
+import Image from 'next/image';
+import { X, User, MapPin, Clock, Phone, Package, DollarSign, Truck, MessageSquare, CheckCircle, XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useSubscription } from '@apollo/client';
+import { SHIPPER_LOCATION_SUBSCRIPTION } from '@/lib/graphql/subcriptions/shipperSubcriptions';
+import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+import { Loader2 } from 'lucide-react';
+import { StatusBadge } from '@/components/ui/status-badge';
+
+// Map component loaded dynamically
+const Map = dynamic(() => import("@/components/common/map"), { ssr: false });
+
+// Shipper Location interface
+export interface ShipperLocation {
+  shipperId: string;
+  latitude: number;
+  longitude: number;
+  updatedAt: string;
+}
+
+// Shipper Location Subscriber component
+function ShipperLocationSubscriber({
+  shipperId,
+  onData,
+}: {
+  shipperId: string;
+  onData: (data: { shipperLocationUpdated: ShipperLocation }) => void;
+}) {
+  useSubscription(SHIPPER_LOCATION_SUBSCRIPTION, {
+    variables: { shipperId },
+    skip: !shipperId,
+    onData: ({ data }) => {
+      if (data?.data?.shipperLocationUpdated) {
+        onData({ shipperLocationUpdated: data.data.shipperLocationUpdated });
+      }
+    }
+  });
+  return null;
+}
+
+interface OrderDetailModalProps {
+  order: Order | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onUpdateStatus?: (orderId: string, newStatus: string) => void;
+  isUpdating?: boolean;
+  refetchOrders?: () => Promise<void>;
+  isLoading?: boolean; // Add loading prop
+}
+
+export function OrderDetailModal({ 
+  order, 
+  isOpen, 
+  onClose, 
+  onUpdateStatus,
+  isUpdating = false,
+  refetchOrders,
+  isLoading = false // Add default value
+}: OrderDetailModalProps) {
+  const [shipperLocationData, setShipperLocationData] = useState<{ shipperLocationUpdated: ShipperLocation } | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | undefined>(undefined);
+
+  // Set user location when order changes
+  useEffect(() => {
+    if (order && order.address) {
+      setUserLocation({
+        lat: order.address.latitude || 0,
+        lng: order.address.longitude || 0,
+      });
+    }
+  }, [order]);
+
+  // Add this useEffect to refetch order when status changes to shipper_received or delivering
+  useEffect(() => {
+    if (
+      order &&
+      (order.status === "shipper_received" || order.status === "delivering") &&
+      typeof refetchOrders === "function"
+    ) {
+      refetchOrders();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.status]);
+  
+  if (!isOpen || !order) return null;
+
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getStatusButtons = () => {
+    if (!onUpdateStatus) return null;
+
+    switch (order.status) {
+      case 'pending':
+        return (
+          <div className="flex space-x-3">
+            <Button
+              onClick={() => onUpdateStatus(order.id, 'confirmed')}
+              disabled={isUpdating}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isUpdating ? 'Đang xử lý...' : 'Xác nhận đơn hàng'}
+            </Button>
+            <Button
+              onClick={() => onUpdateStatus(order.id, 'canceled')}
+              disabled={isUpdating}
+              variant="destructive"
+            >
+              Hủy đơn hàng
+            </Button>
+          </div>
+        );
+      case 'confirmed':
+        return (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-blue-700 text-sm font-medium flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Đã xác nhận - Hệ thống đang tìm tài xế giao hàng
+            </p>
+          </div>
+        );
+      case 'shipper_received':
+        return (
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <p className="text-purple-700 text-sm font-medium flex items-center gap-2">
+              <Truck className="w-4 h-4" />
+              Tài xế đã nhận đơn hàng và đang trên đường đến nhà hàng
+            </p>
+          </div>
+        );
+      case 'delivering':
+        return (
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <p className="text-purple-700 text-sm font-medium flex items-center gap-2">
+              <Package className="w-4 h-4" />
+              Tài xế đang giao hàng đến khách hàng
+            </p>
+          </div>
+        );
+      case 'completed':
+        return (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <p className="text-green-700 text-sm font-medium flex items-center gap-2">
+              <CheckCircle className="w-4 h-4" />
+              Đơn hàng đã được giao thành công
+            </p>
+          </div>
+        );
+      case 'canceled':
+        return (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-700 text-sm font-medium flex items-center gap-2">
+              <XCircle className="w-4 h-4" />
+              Đơn hàng đã bị hủy
+            </p>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Find shipper info if available
+  const shipper = order.shippingDetail?.shipper;
+  const hasShippingDetail = !!order.shippingDetail;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-auto shadow-2xl relative">
+        {/* Loading overlay */}
+        {isLoading && (
+          <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
+            <div className="flex flex-col items-center">
+              <Loader2 className="animate-spin w-12 h-12 text-amber-600 mx-auto mb-4" />
+              <p className="text-gray-600">Đang tải thông tin đơn hàng...</p>
+            </div>
+          </div>
+        )}
+        
+        {/* Header */}
+        <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold">Chi tiết đơn hàng #{order.id.slice(-8)}</h2>
+              <p className="text-amber-100 text-sm">{formatTime(order.createdAt)}</p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <StatusBadge status={order.status || 'pending'} size="md" />
+              <button
+                type="button"
+                aria-label="Đóng chi tiết đơn hàng"
+                title="Đóng"
+                onClick={onClose}
+                className="p-2 hover:bg-white/20 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+          <div className={`grid grid-cols-1 ${hasShippingDetail ? 'xl:grid-cols-3' : 'lg:grid-cols-2'} gap-8`}>
+            {/* Customer Information */}
+            <div className="space-y-6">
+              <div className="bg-gray-50 rounded-xl p-4">
+                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <User className="w-5 h-5 text-amber-600" />
+                  Thông tin khách hàng
+                </h3>
+                <div className="space-y-2">
+                  <p className="text-gray-700">
+                    <span className="font-medium">Tên:</span> {order.user?.name || 'Ẩn danh'}
+                  </p>
+                  {order.user?.phone && (
+                    <p className="text-gray-700 flex items-center gap-2">
+                      <Phone className="w-4 h-4" />
+                      {order.user.phone}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-gray-50 rounded-xl p-4">
+                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-amber-600" />
+                  Địa chỉ giao hàng
+                </h3>
+                <p className="text-gray-700">
+                  {order.address ? 
+                    [order.address.street, order.address.ward, order.address.district, order.address.city]
+                      .filter(Boolean)
+                      .join(', ') 
+                    : 'Chưa có địa chỉ'
+                  }
+                </p>
+              </div>
+
+              {order.note && (
+                <div className="bg-yellow-50 rounded-xl p-4">
+                  <h3 className="font-semibold text-gray-900 mb-2">Ghi chú</h3>
+                  <p className="text-gray-700">{order.note}</p>
+                </div>
+              )}
+
+              {/* Order Timeline */}
+              <div className="bg-gray-50 rounded-xl p-4">
+                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-amber-600" />
+                  Thời gian
+                </h3>
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Đặt hàng:</span> {formatTime(order.createdAt)}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Cập nhật cuối:</span> {formatTime(order.updatedAt)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Order Details */}
+            <div className="space-y-6">
+              <div className="bg-gray-50 rounded-xl p-4">
+                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Package className="w-5 h-5 text-amber-600" />
+                  Chi tiết đơn hàng
+                </h3>
+                <div className="space-y-3">
+                  {order.orderDetails?.map((item, index) => (
+                    <div key={index} className="flex items-center gap-3 bg-white rounded-lg p-3">
+                      {item.food?.image && (
+                        <Image
+                          src={item.food.image}
+                          alt={item.food.name}
+                          width={48}
+                          height={48}
+                          className="w-12 h-12 object-cover rounded-lg"
+                        />
+                      )}
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900">{item.food?.name}</p>
+                        <p className="text-sm text-gray-600">
+                          {item.quantity} x {Number(item.price).toLocaleString('vi-VN')}đ
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-gray-900">
+                          {(Number(item.price) * item.quantity).toLocaleString('vi-VN')}đ
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-amber-600" />
+                    Tổng tiền
+                  </h3>
+                  <p className="text-2xl font-bold text-amber-600">
+                    {(order.total || 0).toLocaleString('vi-VN')}đ
+                  </p>
+                </div>
+                {order.promotionCode && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    Đã áp dụng mã: {order.promotionCode.code}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Shipping & Map Section - Show if shippingDetail exists */}
+            {hasShippingDetail && (
+              <div className="space-y-6">
+                {/* Shipper Info - Only show when shipper is assigned and status is shipper_received or delivering */}
+                {shipper && (order.status === "shipper_received" || order.status === "delivering") && (
+                  <div className="bg-purple-50 rounded-xl p-4 border border-purple-200">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <Truck className="w-5 h-5 text-purple-600" />
+                      Thông tin tài xế
+                    </h3>
+                    <div className="flex items-center gap-3 mb-3">
+                      <Avatar className="w-12 h-12">
+                        <AvatarImage src={shipper.avatar} alt={shipper.name} />
+                        <AvatarFallback>{shipper.name?.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900">{shipper.name}</h4>
+                        <p className="text-sm text-gray-600 flex items-center gap-1">
+                          <Phone className="w-3 h-3" />
+                          {shipper.phone}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {order.status === "shipper_received"
+                            ? "Tài xế đang đến nhà hàng"
+                            : "Tài xế đang giao hàng"}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        // Add your chat functionality here
+                        alert(`Mở chat với tài xế: ${shipper.name}`);
+                      }}
+                    >
+                      <MessageSquare className="w-4 h-4 mr-2" />
+                      Nhắn tin với tài xế
+                    </Button>
+                  </div>
+                )}
+
+                {/* Map Section - Always show map if shippingDetail exists */}
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-amber-600" />
+                    Theo dõi đơn hàng
+                  </h3>
+                  <div className="w-full h-[300px] rounded-lg overflow-hidden bg-gray-100">
+                    {/* Subscribe to shipper location only when shipper is assigned and status is shipper_received or delivering */}
+                    {shipper && (order.status === "shipper_received" || order.status === "delivering") && (
+                      <ShipperLocationSubscriber
+                        shipperId={shipper.id}
+                        onData={setShipperLocationData}
+                      />
+                    )}
+                    <Map
+                      shipperLocation={
+                        shipper && (order.status === "shipper_received" || order.status === "delivering")
+                          ? shipperLocationData?.shipperLocationUpdated
+                          : undefined
+                      }
+                      userLocation={userLocation}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    {shipper
+                      ? order.status === "shipper_received"
+                        ? "Tài xế đang trên đường đến nhà hàng"
+                        : order.status === "delivering"
+                        ? "Tài xế đang giao hàng đến khách hàng"
+                        : "Đang chờ tài xế nhận đơn"
+                      : "Đang tìm tài xế giao hàng..."}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer with Action Buttons */}
+        {getStatusButtons() && (
+          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+            <div className="flex justify-end space-x-3">
+              {getStatusButtons()}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

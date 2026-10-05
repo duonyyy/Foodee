@@ -1,0 +1,111 @@
+name: CD - Foodee production
+
+# Deliberately manual until DNS, TLS, backups, and server secrets are ready.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: foodee-production
+  cancel-in-progress: false
+
+jobs:
+  build-and-push:
+    name: Build ${{ matrix.service.name }}
+    runs-on: ubuntu-latest
+    environment: production
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - {name: backend, context: ./core-api, dockerfile: ./core-api/docker/Dockerfile, image: foodee-backend}
+          - {name: frontend, context: ./web-client, dockerfile: ./web-client/Dockerfile, image: foodee-frontend}
+          - {name: chatbot, context: ./chatbot-service, dockerfile: ./chatbot-service/Dockerfile, image: foodee-chatbot}
+          - {name: vision, context: ./vision-service, dockerfile: ./vision-service/Dockerfile, image: foodee-vision}
+          - {name: minio, context: ./core-api, dockerfile: ./core-api/docker/minio.Dockerfile, image: foodee-minio}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require release branch
+        run: |
+          case "$GITHUB_REF" in
+            refs/heads/main|refs/heads/master) ;;
+            *) echo "Select main or master for production release" >&2; exit 1 ;;
+          esac
+      - name: Require every image source in this checkout
+        run: |
+          test -f core-api/docker/Dockerfile
+          test -f web-client/Dockerfile
+          test -f chatbot-service/Dockerfile
+          test -f vision-service/Dockerfile
+          test -f core-api/docker/minio.Dockerfile
+      - name: Validate public build URLs
+        run: |
+          test -n "${{ vars.APP_DOMAIN }}"
+          test -n "${{ vars.API_DOMAIN }}"
+          test -n "${{ vars.STORAGE_DOMAIN }}"
+          test "${{ vars.APP_DOMAIN }}" != "app.example.com"
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.service.image }}
+          tags: type=sha,prefix=sha-,format=short
+      - uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.service.context }}
+          file: ${{ matrix.service.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://${{ vars.API_DOMAIN }}
+            NEXT_PUBLIC_FOOD_AI_URL=https://${{ vars.APP_DOMAIN }}/food-ai
+            NEXT_PUBLIC_GOOGLE_REDIRECT_URI=https://${{ vars.APP_DOMAIN }}/api/auth/callback/google
+            NEXT_PUBLIC_CLIENT_ID=${{ vars.NEXT_PUBLIC_CLIENT_ID }}
+            NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=${{ vars.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to production host
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Require deployment connection
+        run: |
+          test -n "${{ secrets.SSH_HOST }}"
+          test -n "${{ secrets.SSH_USER }}"
+          test -n "${{ secrets.SSH_KEY }}"
+          test -n "${{ secrets.DEPLOY_PATH }}"
+      - name: Deploy exact image tag
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -eu
+            cd "${{ secrets.DEPLOY_PATH }}"
+            test -d .git
+            test -f .env.production
+            test -z "$(git status --porcelain --untracked-files=no)"
+            git fetch origin "${{ github.ref_name }}"
+            git checkout --detach "${{ github.sha }}"
+            export GHCR_NAMESPACE="$(printf '%s' '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+            export IMAGE_TAG="sha-$(printf '%s' '${{ github.sha }}' | cut -c1-7)"
+            python3 scripts/prod-preflight.py
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            docker compose --env-file .env.production -f compose.prod.yml pull
+            docker compose --env-file .env.production -f compose.prod.yml up -d --wait --wait-timeout 300
+            docker compose --env-file .env.production -f compose.prod.yml ps

@@ -1,0 +1,265 @@
+name: foodee
+
+# Single-host production deployment. Load .env.production explicitly; never
+# combine this file with docker-compose.yml (the local development stack).
+x-backend: &backend
+  image: ghcr.io/${GHCR_NAMESPACE:?Set GHCR_NAMESPACE}/${BACKEND_IMAGE_NAME:-foodee-backend}:${IMAGE_TAG:?Set IMAGE_TAG}
+  restart: unless-stopped
+  networks: [app]
+
+x-backend-env: &backend-env
+  NODE_ENV: production
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_USERNAME: ${DB_USERNAME:?Set DB_USERNAME}
+  DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+  DB_NAME: ${DB_NAME:?Set DB_NAME}
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+  JWT_EXPIRATION: ${JWT_EXPIRATION:-3600s}
+  DB_POOL_MAX: ${DB_POOL_MAX:-10}
+  DB_POOL_MIN: ${DB_POOL_MIN:-2}
+  AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:?Set AI_SERVICE_TOKEN}
+  AI_SERVER_URL: http://ai-server:8000
+  FOOD_AI_URL: http://food-ai:5000
+  MINIO_ENDPOINT: minio
+  MINIO_PORT: "9000"
+  MINIO_USE_SSL: "false"
+  MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY}
+  MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY}
+  MINIO_BUCKET: ${MINIO_BUCKET:?Set MINIO_BUCKET}
+  MINIO_PUBLIC_ENDPOINT: https://${STORAGE_DOMAIN:?Set STORAGE_DOMAIN}
+  API_URL: https://${API_DOMAIN:?Set API_DOMAIN}
+  FRONTEND_URL: https://${APP_DOMAIN:?Set APP_DOMAIN}
+  ALLOWED_ORIGINS: https://${APP_DOMAIN:?Set APP_DOMAIN}
+  ENABLE_DEMO_PAYMENT: "false"
+  MAPBOX_ACCESS_TOKEN: ${MAPBOX_ACCESS_TOKEN:-}
+  FIREBASE_TYPE: ${FIREBASE_TYPE:-}
+  FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+  FIREBASE_PRIVATE_KEY_ID: ${FIREBASE_PRIVATE_KEY_ID:-}
+  FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY:-}
+  FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL:-}
+  FIREBASE_CLIENT_ID: ${FIREBASE_CLIENT_ID:-}
+  FIREBASE_AUTH_URI: ${FIREBASE_AUTH_URI:-}
+  FIREBASE_TOKEN_URI: ${FIREBASE_TOKEN_URI:-}
+  FIREBASE_AUTH_PROVIDER_X509_CERT_URL: ${FIREBASE_AUTH_PROVIDER_X509_CERT_URL:-}
+  FIREBASE_CLIENT_X509_CERT_URL: ${FIREBASE_CLIENT_X509_CERT_URL:-}
+  FIREBASE_UNIVERSE_DOMAIN: ${FIREBASE_UNIVERSE_DOMAIN:-}
+  MOMO_PARTNER_CODE: ${MOMO_PARTNER_CODE:-}
+  MOMO_ACCESS_KEY: ${MOMO_ACCESS_KEY:-}
+  MOMO_SECRET_KEY: ${MOMO_SECRET_KEY:-}
+  MOMO_BASE_URL: ${MOMO_BASE_URL:-}
+  MOMO_REDIRECT_URL: ${MOMO_REDIRECT_URL:-}
+  MOMO_IPN_URL: ${MOMO_IPN_URL:-}
+  VNPAY_TMN_CODE: ${VNPAY_TMN_CODE:-}
+  VNPAY_HASH_SECRET: ${VNPAY_HASH_SECRET:-}
+  VNPAY_BASE_URL: ${VNPAY_BASE_URL:-}
+  VNPAY_API_URL: ${VNPAY_API_URL:-}
+  VNPAY_RETURN_URL: ${VNPAY_RETURN_URL:-}
+  VNPAY_IPN_URL: ${VNPAY_IPN_URL:-}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:?Set DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:?Set DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt: [no-new-privileges:true]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis_data:/data
+    networks: [data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt: [no-new-privileges:true]
+
+  minio:
+    image: ghcr.io/${GHCR_NAMESPACE:?Set GHCR_NAMESPACE}/foodee-minio:${IMAGE_TAG:?Set IMAGE_TAG}
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    networks: [app, data]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt: [no-new-privileges:true]
+
+  migrate:
+    <<: *backend
+    restart: "no"
+    command: ["npm", "run", "migration:run:compiled"]
+    environment:
+      <<: *backend-env
+    networks: [app, data]
+    depends_on:
+      postgres: {condition: service_healthy}
+    security_opt: [no-new-privileges:true]
+
+  api:
+    <<: *backend
+    environment:
+      <<: *backend-env
+      PORT: "3001"
+      QUEUE_PROCESSOR_ENABLED: "false"
+    networks: [app, data]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      minio: {condition: service_healthy}
+      ai-server: {condition: service_healthy}
+      food-ai: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    security_opt: [no-new-privileges:true]
+
+  worker:
+    <<: *backend
+    command: ["npm", "run", "start:worker"]
+    environment:
+      <<: *backend-env
+      QUEUE_PROCESSOR_ENABLED: "true"
+    networks: [app, data]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      minio: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
+    # The worker exposes no readiness endpoint. A process-only healthcheck
+    # would report healthy even if it stopped consuming jobs.
+    security_opt: [no-new-privileges:true]
+
+  ai-server:
+    image: ghcr.io/${GHCR_NAMESPACE:?Set GHCR_NAMESPACE}/foodee-chatbot:${IMAGE_TAG:?Set IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:?Set AI_SERVICE_TOKEN}
+      AI_ALLOWED_ORIGINS: https://${APP_DOMAIN:?Set APP_DOMAIN},https://${API_DOMAIN:?Set API_DOMAIN}
+      LLM_PROVIDER: ${LLM_PROVIDER:?Set LLM_PROVIDER}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      CHAT_LLM_BASE_URL: ${CHAT_LLM_BASE_URL:-}
+      CHAT_LLM_MODEL: ${CHAT_LLM_MODEL:-}
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    networks: [app]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    security_opt: [no-new-privileges:true]
+
+  food-ai:
+    image: ghcr.io/${GHCR_NAMESPACE:?Set GHCR_NAMESPACE}/foodee-vision:${IMAGE_TAG:?Set IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      FOOD_ALLOWED_ORIGINS: https://${APP_DOMAIN:?Set APP_DOMAIN}
+      FOOD_UPLOAD_FOLDER: /app/runtime
+      FOOD_DETECTION_MODEL: models/detection/detection.pt
+      FOOD_CLASSIFIER_MODEL: models/classification/classifier_b2_finetuned_from_pth_float16.tflite
+      GUNICORN_BIND: 0.0.0.0:5000
+      GUNICORN_WORKERS: "2"
+      GUNICORN_THREADS: "2"
+      GUNICORN_TIMEOUT: "120"
+    volumes:
+      - food_ai_runtime:/app/runtime
+    networks: [app]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    security_opt: [no-new-privileges:true]
+
+  frontend:
+    image: ghcr.io/${GHCR_NAMESPACE:?Set GHCR_NAMESPACE}/foodee-frontend:${IMAGE_TAG:?Set IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      INTERNAL_API_URL: http://api:3001
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:?Set MINIO_BUCKET}
+      MINIO_PUBLIC_ENDPOINT: https://${STORAGE_DOMAIN:?Set STORAGE_DOMAIN}
+    networks: [app]
+    depends_on:
+      api: {condition: service_healthy}
+      food-ai: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    security_opt: [no-new-privileges:true]
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN}
+      STORAGE_DOMAIN: ${STORAGE_DOMAIN:?Set STORAGE_DOMAIN}
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/prod.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./deploy/tls/fullchain.pem:/etc/nginx/tls/fullchain.pem:ro
+      - ./deploy/tls/privkey.pem:/etc/nginx/tls/privkey.pem:ro
+    networks: [app]
+    depends_on:
+      frontend: {condition: service_healthy}
+      api: {condition: service_healthy}
+      minio: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    security_opt: [no-new-privileges:true]
+
+networks:
+  app: {}
+  data:
+    internal: true
+
+volumes:
+  postgres_data: {}
+  redis_data: {}
+  minio_data: {}
+  food_ai_runtime: {}

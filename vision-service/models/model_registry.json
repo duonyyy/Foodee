@@ -1,0 +1,46 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-10-01T08:00:00Z",
+  "models": {
+    "detection": {
+      "name": "yolov8n-food-detection",
+      "version": "1.0.0",
+      "task": "detection",
+      "format": "pytorch",
+      "relative_path": "detection/detection.pt",
+      "sha256": "8fe72bf2ee8be3e0a596068f0c6db9e406da829dc0ddbb010ce3545aab0eca8f",
+      "size_bytes": 22515107,
+      "num_classes": 1,
+      "labels": ["food"],
+      "input_shape": [1, 3, 640, 640],
+      "active_runtime": true,
+      "description": "YOLOv8 nano fine-tuned for food localization and bounding box detection"
+    },
+    "classifier_tflite": {
+      "name": "efficientnet-b2-30vnfoods-float16",
+      "version": "1.0.0",
+      "task": "classification",
+      "format": "tflite",
+      "relative_path": "classification/classifier_b2_finetuned_from_pth_float16.tflite",
+      "sha256": "0e5b61ae1ea2dccd820e9de79125face1b5170ff2062f4199edbf25e759e4adf",
+      "size_bytes": 15521600,
+      "num_classes": 30,
+      "input_shape": [1, 260, 260, 3],
+      "active_runtime": true,
+      "description": "EfficientNet-B2 float16 quantized for high-speed inference on 30 Vietnamese dishes"
+    },
+    "classifier_pytorch": {
+      "name": "efficientnet-b2-30vnfoods-checkpoint",
+      "version": "1.0.0",
+      "task": "classification",
+      "format": "pytorch",
+      "relative_path": "classification/best_efficientnet_b2_30vnfoods_finetuned.pth",
+      "sha256": "9e9e376ede2ca0f139d2955f7a0c00401b856597c0e17ca0edd6f28df2209123",
+      "size_bytes": 16497757,
+      "num_classes": 30,
+      "input_shape": [1, 3, 260, 260],
+      "active_runtime": false,
+      "description": "Master PyTorch training checkpoint for model conversion and fine-tuning"
+    }
+  }
+}
