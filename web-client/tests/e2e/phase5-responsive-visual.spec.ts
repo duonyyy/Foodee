@@ -159,7 +159,7 @@ async function setupMocks(page: Page) {
 
 test.describe("Phase 5: Responsive, Visual Regression & Accessibility", () => {
   const screenshotDir = path.join(process.cwd(), "docs", "mantain", "screenshots", "phase5");
-  const artifactDir = "C:\\Users\\Admin\\.gemini\\antigravity-ide\\brain\\cfd61631-bc76-4187-9c8e-55d9a9f5631e\\screenshots";
+  const artifactDir = process.env.ARTIFACT_SCREENSHOTS_DIR || path.join(process.cwd(), "docs", "mantain", "screenshots", "artifacts");
 
   test.beforeAll(async () => {
     if (!fs.existsSync(screenshotDir)) {

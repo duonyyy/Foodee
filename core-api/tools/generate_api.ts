@@ -1,8 +1,11 @@
 import { Project, ClassDeclaration, Decorator } from 'ts-morph';
 import * as fs from 'fs';
+import * as path from 'path';
 
+const projectRoot = path.resolve(__dirname, '..');
+const repoRoot = path.resolve(__dirname, '../..');
 const project = new Project({
-  tsConfigFilePath: 'C:/Users/Admin/Desktop/UIT-2025/DuAn/LapTrinh/foodee/foodee-be/tsconfig.json',
+  tsConfigFilePath: path.join(projectRoot, 'tsconfig.json'),
 });
 
 function getDecoratorArgString(decorator: Decorator | undefined): string {
@@ -189,7 +192,7 @@ for (const group of groups) {
     }
     
     md += `**Source Reference:**\n`;
-    md += `- Controller: ${ep.sourceFile.replace('C:/Users/Admin/Desktop/UIT-2025/DuAn/LapTrinh/foodee/foodee-be/', '')}\n`;
+    md += `- Controller: ${path.relative(repoRoot, ep.sourceFile).replace(/\\/g, '/')}\n`;
     md += `- Class: ${ep.sourceClass}\n`;
     md += `- Method: ${ep.sourceMethod}\n\n---\n\n`;
   }
@@ -208,5 +211,5 @@ md += `Total API endpoints documented: ${endpoints.length}\n`;
 md += `Undocumented endpoints: 0\n`;
 md += `Duplicate endpoints: 0\n`;
 
-fs.writeFileSync('C:/Users/Admin/Desktop/UIT-2025/DuAn/LapTrinh/foodee/foodee-be/API_DOCUMENTATION.md', md, 'utf-8');
+fs.writeFileSync(path.join(projectRoot, 'API_DOCUMENTATION.md'), md, 'utf-8');
 console.log('Successfully generated API_DOCUMENTATION.md');

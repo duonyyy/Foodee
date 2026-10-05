@@ -2,7 +2,7 @@ import { Project, ClassDeclaration, MethodDeclaration, Decorator, Type, Symbol, 
 import * as fs from 'fs';
 import * as path from 'path';
 
-const projectPath = 'C:/Users/Admin/Desktop/UIT-2025/DuAn/LapTrinh/foodee/foodee-be';
+const projectPath = path.resolve(__dirname, '..');
 const project = new Project({
   tsConfigFilePath: path.join(projectPath, 'tsconfig.json'),
 });

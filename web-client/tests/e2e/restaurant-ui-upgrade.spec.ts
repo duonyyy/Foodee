@@ -1,7 +1,11 @@
 import { expect, test } from "@playwright/test";
 import path from "path";
+import fs from "fs";
 
-const ARTIFACT_SCREENSHOTS_DIR = "C:/Users/Admin/.gemini/antigravity-ide/brain/cfd61631-bc76-4187-9c8e-55d9a9f5631e/screenshots";
+const ARTIFACT_SCREENSHOTS_DIR = process.env.ARTIFACT_SCREENSHOTS_DIR || path.join(process.cwd(), "docs", "maintain", "screenshots");
+if (!fs.existsSync(ARTIFACT_SCREENSHOTS_DIR)) {
+  fs.mkdirSync(ARTIFACT_SCREENSHOTS_DIR, { recursive: true });
+}
 
 const mockRestaurant = {
   id: "res-super-1",
