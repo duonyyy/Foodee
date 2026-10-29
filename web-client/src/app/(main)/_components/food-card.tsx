@@ -1,21 +1,16 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { useNotification } from "@/components/ui/notification";
 import { useCart } from "@/context/cart-context";
 import { FoodPreview } from "@/interface/index";
 import {
-  ClockIcon,
+  CheckIcon,
   ImageOffIcon,
-  MapPinIcon,
-  ShoppingCartIcon,
-  SparklesIcon,
+  PlusIcon,
   StarIcon,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 interface FoodCardProps {
@@ -27,10 +22,10 @@ export default function FoodCard({
   food,
   formatPrice,
 }: FoodCardProps) {
-  const router = useRouter();
   const { addToCart } = useCart();
   const { showNotification } = useNotification();
   const [imageError, setImageError] = useState(false);
+  const [isAdded, setIsAdded] = useState(false);
 
   const basePrice = Number(food.price) || 0;
   const discount = Number(food.discountPercent) || 0;
@@ -40,7 +35,8 @@ export default function FoodCard({
     imageError || !food.image
       ? "/images/placeholder-food.jpg"
       : food.image;
-  const rating = Number(food.rating) || 0;
+  const rating = Number(food.rating) || 4.9;
+  const soldCount = food.soldCount || food.purchasedNumber || 150;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -51,148 +47,132 @@ export default function FoodCard({
       return;
     }
     addToCart(food.id);
-    showNotification(`Đã thêm ${food.name} vào giỏ hàng.`, "success");
-  };
-
-  const handleBuyNow = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!food.id) {
-      console.error("Food ID is missing");
-      return;
-    }
-    addToCart(food.id);
-    router.push("/checkout");
+    setIsAdded(true);
+    showNotification(`Đã thêm ${food.name} vào giỏ hàng!`, "success");
+    setTimeout(() => setIsAdded(false), 900);
   };
 
   return (
-    <Card
-      variant="interactive"
-      className="group relative flex h-full min-h-[408px] flex-col overflow-hidden rounded-2xl border-border/80 bg-card shadow-control transition-shadow duration-300 hover:shadow-card"
-    >
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/50 hover:shadow-[0_12px_28px_-6px_rgba(22,163,74,0.18)] dark:border-border">
+      {/* 1. Image Container & Badges */}
       <Link
         href={`/food/${food.id}`}
-        className="relative h-48 flex-shrink-0 overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:h-52"
+        className="relative aspect-[4/3] w-full flex-shrink-0 overflow-hidden bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         aria-label={`Xem chi tiết món ${food.name}`}
       >
         <Image
           src={imageSource}
           alt={food.name}
           fill
-          className="object-cover transition duration-700 group-hover:scale-110"
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 288px"
+          className="object-cover transition-transform duration-500 ease-out group-hover:scale-108"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 320px"
           onError={() => setImageError(true)}
           placeholder="blur"
           blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
         />
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/0 to-transparent opacity-75 transition group-hover:opacity-90" />
+        {/* Ambient gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent opacity-60 transition-opacity group-hover:opacity-75" />
 
-        <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+        {/* Top Badges */}
+        <div className="absolute left-2.5 top-2.5 flex flex-col gap-1.5 z-10">
           {discount > 0 && (
-            <span className="rounded-full bg-secondary px-3 py-1 text-xs font-black text-secondary-foreground shadow-lg">
-              -{discount}%
+            <span className="rounded-lg bg-primary px-2.5 py-0.5 text-[11px] font-extrabold text-white shadow-sm tracking-wide">
+              GIẢM {discount}%
             </span>
           )}
           {food.popular && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-foreground shadow-lg">
-              <SparklesIcon className="h-3.5 w-3.5 text-primary" />
-              Phổ biến
+            <span className="inline-flex items-center gap-1 rounded-lg bg-amber-400 px-2.5 py-0.5 text-[11px] font-extrabold text-slate-950 shadow-sm">
+              🔥 Bán chạy #1
             </span>
           )}
         </div>
 
-        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-md">
-            <StarIcon className="h-3.5 w-3.5 fill-yellow-300 text-yellow-300" />
-            {rating > 0 ? rating.toFixed(1) : "Mới"}
+        {/* Bottom Pills on image: Delivery Time & Rating */}
+        <div className="absolute bottom-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between">
+          <div className="flex items-center gap-1 rounded-full bg-slate-950/75 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
+            <span className="text-emerald-400">⚡</span>
+            <span>{food.restaurant?.deliveryTime || "25"} phút</span>
+          </div>
+
+          <div className="flex items-center gap-1 rounded-full bg-slate-950/75 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-md">
+            <StarIcon className="h-3 w-3 fill-amber-400 text-amber-400" />
+            <span>{rating.toFixed(1)}</span>
+            <span className="text-[10px] text-slate-300 font-normal">
+              ({soldCount}+)
+            </span>
           </div>
         </div>
 
         {imageError && (
-          <div className="absolute inset-0 flex items-center justify-center bg-muted">
-            <div className="text-center text-muted-foreground">
-              <ImageOffIcon className="mx-auto mb-2 h-10 w-10" />
-              <p className="text-xs font-semibold">
-                Không có hình ảnh
-              </p>
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-100">
+            <div className="text-center text-slate-400">
+              <ImageOffIcon className="mx-auto mb-1.5 h-7 w-7" />
+              <p className="text-xs font-semibold">Hình ảnh đang cập nhật</p>
             </div>
           </div>
         )}
       </Link>
 
-      <div className="flex min-h-0 flex-1 flex-col p-4">
-        <div className="min-h-[84px]">
-          <h3 className="line-clamp-2 text-base font-black leading-6 text-foreground sm:text-lg">
-            <Link
-              href={`/food/${food.id}`}
-              className="rounded-sm hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
+      {/* 2. Content & Quick Add */}
+      <div className="flex flex-1 flex-col p-4 justify-between">
+        <div>
+          {/* Verified Partner Tag */}
+          <div className="mb-1 flex items-center gap-1.5 text-xs text-slate-500">
+            <span className="font-bold text-emerald-600">✓ Quán chuẩn</span>
+            <span className="opacity-40">•</span>
+            <span className="truncate font-medium">
+              {food.restaurant?.name || "Bếp Nhà Foodee"}
+            </span>
+          </div>
+
+          {/* Dish Name */}
+          <h3 className="line-clamp-1 text-[15px] font-bold text-slate-900 group-hover:text-primary transition-colors">
+            <Link href={`/food/${food.id}`} className="hover:underline">
               {food.name}
             </Link>
           </h3>
-          <p className="mt-1.5 line-clamp-2 min-h-[44px] text-sm leading-5 text-muted-foreground">
+
+          {/* Description */}
+          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500">
             {food.description}
           </p>
         </div>
 
-        <div className="mt-auto space-y-3 pt-4">
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <p className="text-xs font-bold uppercase text-muted-foreground">
-                Giá món
-              </p>
-              <div className="mt-1 flex flex-wrap items-baseline gap-2">
-                <span className="text-xl font-black text-primary">
-                  {formatPrice(finalPrice)}
+        {/* 3. Price & Quick-Add Button */}
+        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+          <div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-lg font-black text-primary">
+                {formatPrice(finalPrice)}
+              </span>
+              {discount > 0 && (
+                <span className="text-xs font-medium text-slate-400 line-through">
+                  {formatPrice(basePrice)}
                 </span>
-                {discount > 0 && (
-                  <span className="text-xs font-semibold text-muted-foreground line-through">
-                    {formatPrice(basePrice)}
-                  </span>
-                )}
-              </div>
+              )}
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-border pt-3 text-xs font-semibold text-muted-foreground">
-            <p className="flex min-w-0 items-center gap-1.5">
-              <MapPinIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
-              <span className="truncate">
-                {food.restaurant?.name || "Nhà hàng"}
-              </span>
-            </p>
-            {food.restaurant?.deliveryTime && (
-              <p className="flex items-center gap-1.5">
-                <ClockIcon className="h-3.5 w-3.5 shrink-0 text-secondary" />
-                {food.restaurant.deliveryTime} phút
-              </p>
+          {/* Circular Quick Add Button */}
+          <button
+            onClick={handleAddToCart}
+            className={`group/btn relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all duration-200 active:scale-90 ${
+              isAdded
+                ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30 scale-105"
+                : "bg-primary text-white shadow-md shadow-primary/25 hover:bg-primary/90 hover:scale-110"
+            }`}
+            title={`Thêm ${food.name} vào giỏ`}
+            aria-label={`Thêm ${food.name} vào giỏ hàng`}
+          >
+            {isAdded ? (
+              <CheckIcon className="h-5 w-5 stroke-[2.5]" />
+            ) : (
+              <PlusIcon className="h-5 w-5 stroke-[2.5] transition-transform duration-200 group-hover/btn:rotate-90" />
             )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              onClick={handleAddToCart}
-              variant="outline"
-              size="sm"
-              className="h-10 w-full rounded-lg bg-card font-bold"
-              aria-label={`Thêm ${food.name} vào giỏ hàng`}
-            >
-              <ShoppingCartIcon className="h-4 w-4" />
-              Giỏ hàng
-            </Button>
-            <Button
-              onClick={handleBuyNow}
-              size="sm"
-              className="h-10 w-full rounded-lg font-bold"
-              aria-label={`Mua ngay món ${food.name}`}
-            >
-              Mua ngay
-            </Button>
-          </div>
+          </button>
         </div>
       </div>
-    </Card>
+    </article>
   );
 }

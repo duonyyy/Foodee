@@ -101,15 +101,13 @@ export default function PromotionSection({
         {visiblePromotions.map((promotion) => (
           <article
             key={promotion.id}
-            className={`relative h-56 overflow-hidden rounded-2xl border border-border bg-muted shadow-card ${
-              direction === "right"
+            className={`relative h-56 overflow-hidden rounded-2xl border border-border bg-muted shadow-card ${direction === "right"
                 ? "motion-safe:animate-fade-in-right"
                 : ""
-            } ${
-              direction === "left"
+              } ${direction === "left"
                 ? "motion-safe:animate-fade-in-left"
                 : ""
-            }`}
+              }`}
             onAnimationEnd={() => setDirection(null)}
           >
             <Image

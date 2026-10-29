@@ -684,18 +684,18 @@ function SearchPageInner() {
             <div className="flex gap-3 flex-wrap">
               <div className="relative flex-1 min-w-[300px]">
                 <Input
-                  className="pl-4 pr-12 py-3 text-lg border-gray-200 focus:border-orange-400 focus:ring-orange-400"
+                  className="pl-4 pr-12 py-3 text-lg border-gray-200 focus:border-primary focus:ring-primary"
                   placeholder="Tìm kiếm món ăn, nhà hàng..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-orange-100 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-primary/10 transition-colors"
                   title="Tìm kiếm bằng hình ảnh"
                   onClick={() => setOpenImageModal(true)}
                 >
-                  <CameraIcon className="h-5 w-5 text-orange-500" />
+                  <CameraIcon className="h-5 w-5 text-primary" />
                 </button>
               </div>
               <Button
@@ -722,7 +722,7 @@ function SearchPageInner() {
                   {activeFiltersCount > 0 && (
                     <Badge
                       variant="secondary"
-                      className="ml-auto bg-orange-100 text-orange-700"
+                      className="ml-auto bg-primary/10 text-primary font-bold"
                     >
                       {activeFiltersCount}
                     </Badge>
@@ -752,7 +752,7 @@ function SearchPageInner() {
                   {activeFiltersCount > 0 && (
                     <Badge
                       variant="secondary"
-                      className="bg-orange-100 text-orange-700 text-xs"
+                      className="bg-primary/10 text-primary font-bold text-xs"
                     >
                       {activeFiltersCount}
                     </Badge>
@@ -798,12 +798,12 @@ function SearchPageInner() {
                   <Badge
                     key={`${chip.type}-${chip.id}`}
                     variant="secondary"
-                    className="flex items-center gap-1.5 bg-orange-50 text-orange-700 border border-orange-200 py-1.5 px-3 rounded-full text-xs font-semibold"
+                    className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 py-1.5 px-3 rounded-full text-xs font-semibold"
                   >
                     {chip.label}
                     <button
                       onClick={() => removeChip(chip)}
-                      className="hover:text-orange-950 hover:bg-orange-100 p-0.5 rounded-full transition-colors focus-visible:outline-none"
+                      className="hover:text-emerald-950 hover:bg-emerald-100 p-0.5 rounded-full transition-colors focus-visible:outline-none"
                       title={`Xóa ${chip.label}`}
                     >
                       <X className="h-3 w-3" />
@@ -814,7 +814,7 @@ function SearchPageInner() {
                   variant="ghost"
                   size="sm"
                   onClick={clearAllFilters}
-                  className="text-orange-600 hover:text-orange-700 text-xs h-7 py-0 px-2 font-bold"
+                  className="text-primary hover:text-primary/80 text-xs h-7 py-0 px-2 font-bold"
                 >
                   Xóa tất cả bộ lọc
                 </Button>

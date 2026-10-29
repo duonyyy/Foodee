@@ -46,13 +46,15 @@ export default function HeroSearch({
   }, [debouncedQuery]);
 
   const navigateToSearch = () => {
-    const normalizedQuery = query.trim();
-    if (!normalizedQuery || isNavigating) return;
+    if (isNavigating) return;
 
     setIsOpen(false);
-    const params = new URLSearchParams({ search: normalizedQuery });
+    const normalizedQuery = query.trim();
+    const url = normalizedQuery
+      ? `/search?${new URLSearchParams({ search: normalizedQuery }).toString()}`
+      : `/search`;
     startTransition(() => {
-      router.push(`/search?${params.toString()}`);
+      router.push(url);
     });
   };
 
@@ -178,8 +180,7 @@ export default function HeroSearch({
           size="lg"
           loading={isNavigating}
           loadingLabel="Đang mở kết quả tìm kiếm"
-          disabled={!query.trim()}
-          className="rounded-xl px-7 text-base font-bold"
+          className="rounded-xl px-7 text-base font-bold bg-primary text-primary-foreground shadow-lg shadow-primary/25 hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] transition-all"
         >
           Tìm kiếm
         </Button>
@@ -226,11 +227,10 @@ export default function HeroSearch({
                       aria-selected={activeIndex === index}
                       onMouseEnter={() => setActiveIndex(index)}
                       onClick={() => selectSuggestion(food)}
-                      className={`flex w-full items-center gap-3 rounded-xl p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                        activeIndex === index
+                      className={`flex w-full items-center gap-3 rounded-xl p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${activeIndex === index
                           ? "bg-accent"
                           : "hover:bg-accent/70"
-                      }`}
+                        }`}
                     >
                       <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">
                         <Image

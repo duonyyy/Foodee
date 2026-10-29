@@ -81,7 +81,7 @@ function CheckoutPageInner() {
   const canSubmitOrder = hasDeliveryAddress && Boolean(calculation);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.1),transparent_30%),radial-gradient(circle_at_100%_25%,hsl(var(--secondary)/0.1),transparent_28%)]">
+    <div className="min-h-screen bg-slate-50/70">
       <div className="container mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:py-12">
         {/* Header */}
         <header className="mb-8 rounded-2xl border border-border/80 bg-card/90 p-5 shadow-sm backdrop-blur sm:p-7">
@@ -152,11 +152,10 @@ function CheckoutPageInner() {
                     <legend className="sr-only">Cách chọn địa chỉ giao hàng</legend>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <label
-                        className={`relative flex min-h-[52px] cursor-pointer items-center gap-3 rounded-xl border p-3 text-xs font-bold transition ${
-                          selectedAddressType === "saved"
+                        className={`relative flex min-h-[52px] cursor-pointer items-center gap-3 rounded-xl border p-3 text-xs font-bold transition ${selectedAddressType === "saved"
                             ? "border-primary bg-primary/5 ring-1 ring-primary shadow-xs"
                             : "border-border bg-background/60 hover:border-primary/40 hover:bg-card"
-                        }`}
+                          }`}
                       >
                         <input
                           type="radio"
@@ -167,11 +166,10 @@ function CheckoutPageInner() {
                           className="sr-only"
                         />
                         <div
-                          className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border transition ${
-                            selectedAddressType === "saved"
+                          className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border transition ${selectedAddressType === "saved"
                               ? "border-primary bg-primary text-primary-foreground"
                               : "border-muted-foreground/40 bg-background"
-                          }`}
+                            }`}
                         >
                           {selectedAddressType === "saved" && <Check className="h-3 w-3 stroke-[3]" />}
                         </div>
@@ -182,11 +180,10 @@ function CheckoutPageInner() {
                       </label>
 
                       <label
-                        className={`relative flex min-h-[52px] cursor-pointer items-center gap-3 rounded-xl border p-3 text-xs font-bold transition ${
-                          selectedAddressType === "custom"
+                        className={`relative flex min-h-[52px] cursor-pointer items-center gap-3 rounded-xl border p-3 text-xs font-bold transition ${selectedAddressType === "custom"
                             ? "border-primary bg-primary/5 ring-1 ring-primary shadow-xs"
                             : "border-border bg-background/60 hover:border-primary/40 hover:bg-card"
-                        }`}
+                          }`}
                       >
                         <input
                           type="radio"
@@ -197,11 +194,10 @@ function CheckoutPageInner() {
                           className="sr-only"
                         />
                         <div
-                          className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border transition ${
-                            selectedAddressType === "custom"
+                          className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border transition ${selectedAddressType === "custom"
                               ? "border-primary bg-primary text-primary-foreground"
                               : "border-muted-foreground/40 bg-background"
-                          }`}
+                            }`}
                         >
                           {selectedAddressType === "custom" && <Check className="h-3 w-3 stroke-[3]" />}
                         </div>

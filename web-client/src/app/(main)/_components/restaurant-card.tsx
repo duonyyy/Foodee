@@ -131,8 +131,8 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
   };
 
   return (
-    <section className="relative w-full overflow-hidden rounded-lg border border-border/80 bg-card shadow-[0_24px_80px_rgb(15_23_42/0.10)]">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgb(34_197_94/0.16),transparent_32%),radial-gradient(circle_at_88%_0%,rgb(249_115_22/0.13),transparent_30%)]" />
+    <section className="relative w-full overflow-hidden rounded-2xl border border-border/80 bg-card shadow-card">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-amber-500/5 pointer-events-none" />
       <div className="relative grid min-h-[620px] grid-cols-1 lg:min-h-[520px] lg:grid-cols-[1.05fr_0.95fr]">
         <div className="relative min-h-[430px] overflow-hidden lg:min-h-full">
           <Image
@@ -258,7 +258,7 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
                 )}
                 {activeRestaurant.deliveryTime && (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-3 py-2 backdrop-blur-md">
-                    <Clock className="h-4 w-4 text-orange-200" />
+                    <Clock className="h-4 w-4 text-emerald-300" />
                     {activeRestaurant.deliveryTime} phút
                   </span>
                 )}
@@ -320,7 +320,7 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({
                       className="object-cover transition duration-700 group-hover:scale-105 motion-reduce:transition-none"
                     />
                     {Number(food.discountPercent) > 0 ? (
-                      <span className="absolute left-2 top-2 rounded-full bg-orange-500 px-2 py-0.5 text-[11px] font-black text-white shadow">
+                      <span className="absolute left-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[11px] font-black text-white shadow">
                         -{Number(food.discountPercent)}%
                       </span>
                     ) : null}

@@ -8,12 +8,14 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useGeo } from "@/context/geolocation-context";
 import {
-  BadgePercent,
-  MapPinned,
-  Store,
-  Utensils,
+  Award,
+  CreditCard,
+  ShieldCheck,
+  Zap,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import type { GuestPromotionResponse } from "@/api/guest/promotion.api";
+import { PromotionType } from "@/interface";
 import RestaurantCard from "./_components/restaurant-card";
 import CategorySection from "./_components/ui/category";
 import FoodGrid from "./_components/ui/food-grid";
@@ -22,6 +24,25 @@ import HeroSection from "./_components/ui/hero-section";
 import PromotionSection from "./_components/ui/promotion";
 import { useHomeData } from "./_hooks/use-home-data";
 
+const DEFAULT_PROMOTIONS: GuestPromotionResponse[] = [
+  {
+    id: "promo-welcome",
+    code: "FOODEENEW",
+    description: "Giảm 30% tối đa 50.000đ cho đơn hàng đầu tiên từ 100.000đ khi đặt qua Foodee.",
+    type: PromotionType.FOOD_DISCOUNT,
+    discountPercent: 30,
+    image: "/assets/hero.png",
+  },
+  {
+    id: "promo-freeship",
+    code: "FREESHIP25",
+    description: "Miễn phí vận chuyển 25.000đ cho đơn từ 11h - 13h trong bán kính 5km.",
+    type: PromotionType.SHIPPING_DISCOUNT,
+    discountAmount: 25000,
+    image: "/assets/hero.png",
+  },
+];
+
 const formatPrice = (price: number) =>
   new Intl.NumberFormat("vi-VN", {
     style: "currency",
@@ -29,25 +50,36 @@ const formatPrice = (price: number) =>
     maximumFractionDigits: 0,
   }).format(price);
 
-const StatsSkeleton = () => (
-  <section
-    className="grid gap-3 border-y border-border/70 py-4 sm:grid-cols-2 lg:grid-cols-4"
-    aria-label="Đang tải tổng quan"
-  >
-    {[...Array(4)].map((_, index) => (
-      <div
-        key={index}
-        className="flex items-center gap-3 rounded-xl bg-card/70 px-4 py-3 shadow-control ring-1 ring-border/70"
-      >
-        <Skeleton className="h-11 w-11 shrink-0 rounded-lg" />
-        <div className="flex-1 space-y-2">
-          <Skeleton className="h-5 w-1/3" />
-          <Skeleton className="h-3 w-1/2" />
-        </div>
-      </div>
-    ))}
-  </section>
-);
+const goldenGuarantees = [
+  {
+    title: "Bảo hiểm đơn hàng 100%",
+    description: "Hoàn tiền hoặc đổi món mới nếu đổ vỡ hoặc sai món",
+    icon: ShieldCheck,
+    badge: "An tâm tuyệt đối",
+    color: "text-amber-500 bg-amber-500/10 border-amber-200/60",
+  },
+  {
+    title: "Giao nóng trong 25 phút",
+    description: "Túi nhiệt 3 lớp chuyên dụng, giữ trọn độ sốt giòn",
+    icon: Zap,
+    badge: "Siêu tốc độ",
+    color: "text-orange-500 bg-orange-500/10 border-orange-200/60",
+  },
+  {
+    title: "100% Quán chuẩn ATTP",
+    description: "Kiểm duyệt giấy chứng nhận an toàn thực phẩm",
+    icon: Award,
+    badge: "Chính hãng",
+    color: "text-emerald-600 bg-emerald-500/10 border-emerald-200/60",
+  },
+  {
+    title: "Thanh toán bảo mật đa kênh",
+    description: "MoMo, VNPAY, ZaloPay, Thẻ & Tiền mặt (COD)",
+    icon: CreditCard,
+    badge: "Bảo mật PCI",
+    color: "text-blue-500 bg-blue-500/10 border-blue-200/60",
+  },
+];
 
 const PromotionSkeleton = () => (
   <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -161,8 +193,8 @@ export default function Home() {
       activeCategory === "All"
         ? foods
         : foods.filter(
-            (food) => food.category?.name === activeCategory,
-          ),
+          (food) => food.category?.name === activeCategory,
+        ),
     [activeCategory, foods],
   );
 
@@ -179,40 +211,6 @@ export default function Home() {
     [foods, restaurants],
   );
 
-  const homeStats = useMemo(
-    () => [
-      {
-        label: "Món sẵn sàng",
-        value: foods.length,
-        icon: Utensils,
-      },
-      {
-        label: "Cửa hàng",
-        value: restaurants.length,
-        icon: Store,
-      },
-      {
-        label: "Ưu đãi",
-        value: promotions.length,
-        icon: BadgePercent,
-      },
-      {
-        label: "Gần bạn",
-        value: nearbyFoods.length,
-        icon: MapPinned,
-      },
-    ],
-    [
-      foods.length,
-      nearbyFoods.length,
-      promotions.length,
-      restaurants.length,
-    ],
-  );
-
-  const isOverviewLoading = Object.values(statuses).some(
-    (status) => status === "loading" || status === "idle",
-  );
   const allSectionsFailed = Object.values(statuses).every(
     (status) => status === "error",
   );
@@ -223,33 +221,34 @@ export default function Home() {
 
       <div className="border-t border-border/50">
         <div className="mx-auto max-w-screen-2xl px-4 py-7 sm:px-6 lg:px-8 lg:py-10">
-          {isOverviewLoading ? (
-            <StatsSkeleton />
-          ) : (
-            <section
-              className="grid gap-3 border-y border-border/70 py-4 sm:grid-cols-2 lg:grid-cols-4"
-              aria-label="Tổng quan Foodee"
-            >
-              {homeStats.map(({ label, value, icon: Icon }) => (
+          <section
+            className="grid gap-4 py-3 sm:grid-cols-2 lg:grid-cols-4"
+            aria-label="4 Cam Kết Vàng Foodee"
+          >
+            {goldenGuarantees.map(({ title, description, icon: Icon, badge, color }) => (
+              <div
+                key={title}
+                className="group relative flex items-start gap-3.5 rounded-2xl border border-border/80 bg-card p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-card"
+              >
                 <div
-                  key={label}
-                  className="flex items-center gap-3 rounded-xl bg-card px-4 py-3 shadow-control ring-1 ring-border/70"
+                  className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border ${color} transition-transform duration-300 group-hover:scale-110`}
                 >
-                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-                    <Icon className="h-5 w-5" aria-hidden="true" />
-                  </div>
-                  <div>
-                    <p className="text-xl font-black leading-none text-foreground">
-                      {value}
-                    </p>
-                    <p className="mt-1 text-xs font-bold uppercase text-muted-foreground">
-                      {label}
-                    </p>
-                  </div>
+                  <Icon className="h-5 w-5" aria-hidden="true" />
                 </div>
-              ))}
-            </section>
-          )}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-bold text-foreground line-clamp-1">
+                    {title}
+                  </h3>
+                  <p className="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                    {description}
+                  </p>
+                  <span className="mt-2 inline-block text-[11px] font-bold text-primary">
+                    ✓ {badge}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </section>
 
           {allSectionsFailed ? (
             <ErrorState
@@ -271,7 +270,7 @@ export default function Home() {
                   id="promotion-title"
                 />
                 {statuses.promotions === "loading" ||
-                statuses.promotions === "idle" ? (
+                  statuses.promotions === "idle" ? (
                   <PromotionSkeleton />
                 ) : statuses.promotions === "error" ? (
                   <ErrorState
@@ -280,11 +279,8 @@ export default function Home() {
                     actionLabel="Thử lại"
                     onAction={() => void retry()}
                   />
-                ) : statuses.promotions === "empty" ? (
-                  <EmptyState
-                    title="Chưa có ưu đãi mới"
-                    description="Foodee sẽ cập nhật khuyến mãi ngay khi có."
-                  />
+                ) : statuses.promotions === "empty" || promotions.length === 0 ? (
+                  <PromotionSection promotions={DEFAULT_PROMOTIONS} />
                 ) : (
                   <PromotionSection promotions={promotions} />
                 )}
@@ -312,7 +308,7 @@ export default function Home() {
                   </div>
                 </div>
                 {statuses.restaurants === "loading" ||
-                statuses.restaurants === "idle" ? (
+                  statuses.restaurants === "idle" ? (
                   <RestaurantSkeleton />
                 ) : statuses.restaurants === "error" ? (
                   <ErrorState
@@ -336,7 +332,7 @@ export default function Home() {
 
               <div className="surface-panel px-3 py-2 sm:px-5">
                 {statuses.topSelling === "loading" ||
-                statuses.topSelling === "idle" ? (
+                  statuses.topSelling === "idle" ? (
                   <FoodRowSkeleton />
                 ) : statuses.topSelling === "error" ? (
                   <ErrorState
@@ -358,7 +354,7 @@ export default function Home() {
 
               <div className="surface-panel mt-8 bg-surface/75 px-3 py-2 sm:px-5">
                 {statuses.nearby === "loading" ||
-                statuses.nearby === "idle" ? (
+                  statuses.nearby === "idle" ? (
                   <FoodRowSkeleton />
                 ) : statuses.nearby === "error" ? (
                   <ErrorState
@@ -380,7 +376,7 @@ export default function Home() {
 
               <section className="mt-10">
                 {statuses.categories === "loading" ||
-                statuses.categories === "idle" ? (
+                  statuses.categories === "idle" ? (
                   <>
                     <SectionHeading
                       eyebrow="Khám phá nhanh"
@@ -407,7 +403,7 @@ export default function Home() {
 
               <section className="surface-panel mt-2 p-3 sm:p-5">
                 {statuses.foods === "loading" ||
-                statuses.foods === "idle" ? (
+                  statuses.foods === "idle" ? (
                   <>
                     <SectionHeading
                       eyebrow="Tất cả lựa chọn"

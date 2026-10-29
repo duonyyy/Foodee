@@ -37,7 +37,7 @@ export default function HeroSection() {
         <div className="max-w-2xl">
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-control backdrop-blur">
             <SparklesIcon
-              className="h-4 w-4 text-orange-200"
+              className="h-4 w-4 text-emerald-300"
               aria-hidden="true"
             />
             Món ngon gần bạn, giao nhanh mỗi ngày
@@ -45,13 +45,13 @@ export default function HeroSection() {
 
           <h1
             id="home-hero-title"
-            className="type-display max-w-xl text-white"
+            className="type-display max-w-xl text-white tracking-tight"
           >
-            Một bữa ngon, đúng lúc bạn cần.
+            Món ngon nóng hổi, giao tận nơi trong 25 phút.
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-7 text-white/85 md:text-lg">
-            Khám phá quán gần bạn, chọn món yêu thích và đặt giao
-            trong vài thao tác gọn gàng.
+          <p className="mt-4 max-w-xl text-base leading-relaxed text-white/90 md:text-lg">
+            Đại tiệc ẩm thực Việt Nam chuẩn vị truyền thống. Hơn 60 món ăn đặc sắc từ 
+            phở, bún đậu đến bánh mì giòn rụm với cam kết bồi hoàn 100% nếu không hài lòng.
           </p>
 
           <HeroSearch
@@ -59,6 +59,27 @@ export default function HeroSection() {
             lng={location?.lng}
             onOpenImageSearch={() => setOpenImageModal(true)}
           />
+
+          {/* Trending Food Chips */}
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+            <span className="font-bold text-emerald-300">🔥 Xu hướng:</span>
+            {[
+              { name: "Phở bò", query: "Phở" },
+              { name: "Cơm tấm", query: "Cơm tấm" },
+              { name: "Bún đậu", query: "Bún đậu" },
+              { name: "Bánh mì chảo", query: "Bánh mì chảo" },
+              { name: "Bún bò Huế", query: "Bún bò Huế" },
+              { name: "Trà sen vàng", query: "Trà sen" },
+            ].map((chip) => (
+              <a
+                key={chip.name}
+                href={`/search?search=${encodeURIComponent(chip.query)}`}
+                className="rounded-full border border-white/20 bg-white/10 px-3 py-1 font-semibold text-white/95 backdrop-blur transition hover:border-emerald-400 hover:bg-white/20 hover:scale-105"
+              >
+                {chip.name}
+              </a>
+            ))}
+          </div>
         </div>
       </div>
 

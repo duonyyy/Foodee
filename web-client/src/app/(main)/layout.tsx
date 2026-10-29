@@ -1,4 +1,5 @@
 import "../../styles/globals.css";
+import LiveOrderTicker from "@/components/common/live-order-ticker";
 import MainProviders from "./_components/main-providers";
 import BreadcrumbTrail from "./_components/navigation/breadcrumb-trail";
 import Navbar from "./_components/navigation/navbar";
@@ -22,6 +23,7 @@ export default function MainLayout({
       >
         {children}
       </main>
+      <LiveOrderTicker />
     </MainProviders>
   );
 }
