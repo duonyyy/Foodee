@@ -29,12 +29,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useSubscription } from "@apollo/client";
-import { SHIPPER_LOCATION_SUBSCRIPTION } from "@/lib/graphql/subcriptions/shipperSubcriptions";
+import { SHIPPER_LOCATION_SUBSCRIPTION } from "@/lib/graphql/subscriptions/shipperSubscriptions";
 import type { AdminOrderDetail } from "@/api/admin";
-import { ORDER_STATUS_SUBSCRIPTION } from "@/lib/graphql/subcriptions/orderSubcriptions";
+import { ORDER_STATUS_SUBSCRIPTION } from "@/lib/graphql/subscriptions/orderSubscriptions";
 
 // Dynamic imports for modal dialogs and map
-const RatingModal = dynamic(() => import("./_components/ratting-modal"), { ssr: false });
+const RatingModal = dynamic(() => import("./_components/rating-modal"), { ssr: false });
 const ShipperRatingModal = dynamic(() => import("./_components/shipper-rating-modal"), { ssr: false });
 const Map = dynamic(() => import("@/components/common/map"), { ssr: false });
 

@@ -22,7 +22,7 @@ import { useAuth } from "@/context/auth-context";
 import { useCart } from "@/context/cart-context";
 import { useCartDrawer } from "@/context/cart-drawer-context";
 import type { Notification } from "@/interface"; // adjust path as needed
-import { NOTIFICATION_ADDED_SUBSCRIPTION } from "@/lib/graphql/subcriptions/notificationSubscriptions";
+import { NOTIFICATION_ADDED_SUBSCRIPTION } from "@/lib/graphql/subscriptions/notificationSubscriptions";
 import { gql, useSubscription } from "@apollo/client";
 import {
   BellIcon,

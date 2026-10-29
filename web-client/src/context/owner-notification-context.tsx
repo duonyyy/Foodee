@@ -4,8 +4,8 @@
 import { apiRequest } from "@/api/base-api";
 import { useAuth } from "@/context/auth-context";
 import { OwnerNotification } from "@/interface";
-import { MESSAGE_SENT_SUBSCRIPTION } from "@/lib/graphql/subcriptions/messengerSubscriptions";
-import { ORDER_CREATED_SUBSCRIPTION } from "@/lib/graphql/subcriptions/orderSubcriptions";
+import { MESSAGE_SENT_SUBSCRIPTION } from "@/lib/graphql/subscriptions/messengerSubscriptions";
+import { ORDER_CREATED_SUBSCRIPTION } from "@/lib/graphql/subscriptions/orderSubscriptions";
 import { useSubscription } from "@apollo/client";
 import React, {
   createContext,

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { CommonInfoForm } from '../_components/commom';
+import { CommonInfoForm } from '../_components/common';
 import { Restaurant } from '@/interface';
 import { useAuth } from '@/context/auth-context';
 import { userApi } from '@/api/user';

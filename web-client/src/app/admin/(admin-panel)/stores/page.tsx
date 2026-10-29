@@ -8,7 +8,7 @@ import { useAuth } from "@/context/auth-context";
 import { adminService } from "@/api/admin";
 
 import Header from "@/app/admin/(admin-panel)/_components/header";
-import NavigationBar from "@/app/admin/(admin-panel)/_components/tab";
+import NavigationBar from "@/app/admin/(admin-panel)/_components/navigation-tabs";
 import SearchAndFilters from "@/app/admin/(admin-panel)/_components/search-and-filter";
 import Table, { Column, Action } from "@/app/admin/(admin-panel)/_components/table";
 import Pagination from "@/app/admin/(admin-panel)/_components/pagination";

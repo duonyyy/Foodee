@@ -1,6 +1,6 @@
 import { useSubscription } from '@apollo/client';
 import { useAuth } from '@/context/auth-context';
-import { ORDER_STATUS_SUBSCRIPTION } from '@/lib/graphql/subcriptions/orderSubcriptions';
+import { ORDER_STATUS_SUBSCRIPTION } from '@/lib/graphql/subscriptions/orderSubscriptions';
 
 interface OrderStatusUpdate {
   id: string;

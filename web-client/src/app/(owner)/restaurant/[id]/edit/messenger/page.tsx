@@ -32,7 +32,7 @@ import { useSubscription } from "@apollo/client";
 import {
   MESSAGE_SENT_SUBSCRIPTION,
   MESSAGES_READ_SUBSCRIPTION,
-} from "@/lib/graphql/subcriptions/messengerSubscriptions";
+} from "@/lib/graphql/subscriptions/messengerSubscriptions";
 import { Textarea } from "@/components/ui/textarea";
 
 const QUICK_REPLIES = [

@@ -1,6 +1,6 @@
 import {useState } from 'react';
 import { useSubscription } from '@apollo/client';
-import { ORDER_CREATED_SUBSCRIPTION } from '@/lib/graphql/subcriptions/orderSubcriptions';
+import { ORDER_CREATED_SUBSCRIPTION } from '@/lib/graphql/subscriptions/orderSubscriptions';
 import { Order } from '@/interface';
 
 export function useOrderCreatedSubscription(restaurantId: string) {

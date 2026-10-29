@@ -9,7 +9,7 @@ import { Conversation, Message, ConversationType, SendMessageDto } from '@/inter
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useSubscription } from '@apollo/client';
-import { MESSAGE_SENT_SUBSCRIPTION, MESSAGES_READ_SUBSCRIPTION } from '@/lib/graphql/subcriptions/messengerSubscriptions';
+import { MESSAGE_SENT_SUBSCRIPTION, MESSAGES_READ_SUBSCRIPTION } from '@/lib/graphql/subscriptions/messengerSubscriptions';
 import { Textarea } from '@/components/ui/textarea';
 
 const MessengerPage = () => {

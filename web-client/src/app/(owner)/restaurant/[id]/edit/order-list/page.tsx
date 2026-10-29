@@ -25,7 +25,7 @@ import {
   Search,
 } from "lucide-react";
 import { useSubscription } from "@apollo/client";
-import { ORDER_STATUS_SUBSCRIPTION } from "@/lib/graphql/subcriptions/orderSubcriptions";
+import { ORDER_STATUS_SUBSCRIPTION } from "@/lib/graphql/subscriptions/orderSubscriptions";
 import { adminService } from "@/api/admin";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PageHeader } from "@/components/ui/page-header";

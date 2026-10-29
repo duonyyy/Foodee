@@ -16,7 +16,7 @@ import Header from "@/app/admin/(admin-panel)/_components/header";
 import SearchAndFilters from "@/app/admin/(admin-panel)/_components/search-and-filter";
 import Table, { Column } from "@/app/admin/(admin-panel)/_components/table";
 import Pagination from "@/app/admin/(admin-panel)/_components/pagination";
-import NavigationBar from "@/app/admin/(admin-panel)/_components/tab";
+import NavigationBar from "@/app/admin/(admin-panel)/_components/navigation-tabs";
 import dynamic from "next/dynamic";
 import { useShippers } from "@/hooks/use-shipper";
 

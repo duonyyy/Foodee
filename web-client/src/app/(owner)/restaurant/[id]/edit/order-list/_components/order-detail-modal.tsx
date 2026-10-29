@@ -4,7 +4,7 @@ import { X, User, MapPin, Clock, Phone, Package, DollarSign, Truck, MessageSquar
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useSubscription } from '@apollo/client';
-import { SHIPPER_LOCATION_SUBSCRIPTION } from '@/lib/graphql/subcriptions/shipperSubcriptions';
+import { SHIPPER_LOCATION_SUBSCRIPTION } from '@/lib/graphql/subscriptions/shipperSubscriptions';
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Loader2 } from 'lucide-react';
