@@ -1,54 +1,50 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Image from "next/image";
-import { useRouter, useParams } from "next/navigation";
+import { guestService } from "@/api/guest";
 import { userApi } from "@/api/user";
-import { adminService } from "@/api/admin";
-import { useAuth } from "@/context/auth-context";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { FileUpload } from "@/components/ui/file-upload";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useNotification } from "@/components/ui/notification";
 import {
-  X,
-
-  Image as ImageIcon,
-  Plus,
-  Trash2,
-  ArrowLeft,
-  Save,
-  Camera,
-  Tag,
-  Clock,
-  DollarSign,
-} from "lucide-react";
-import { FoodDetail, Topping } from "@/interface";
-import {
   Select,
-  SelectTrigger,
   SelectContent,
   SelectItem,
+  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/context/auth-context";
+import { FoodDetail, Topping } from "@/interface";
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+  ArrowLeft,
+  Camera,
+  Clock,
+  Eye,
+  Loader2,
+  Plus,
+  Save,
+  Sparkles,
+  Tag,
+  Trash2,
+  UtensilsCrossed,
+  X,
+} from "lucide-react";
+import Image from "next/image";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 type FoodForm = {
   name: string;
   description: string;
   price: string;
-  discountPercent?: string;
+  discountPercent: string;
   categoryId: string;
-  preparationTime?: string;
-  image?: string;
-  imageUrls?: string[];
+  preparationTime: string;
+  image: string;
+  imageUrls: string[];
 };
 
 export default function UpdateFoodPage() {
@@ -57,7 +53,9 @@ export default function UpdateFoodPage() {
   const { showNotification } = useNotification();
   const params = useParams();
   const restaurantId = Array.isArray(params.id) ? params.id[0] : params.id;
-  const foodId = Array.isArray(params.foodId) ? params.foodId[0] : params.foodId;
+  const foodId = Array.isArray(params.foodId)
+    ? params.foodId[0]
+    : params.foodId;
 
   const [form, setForm] = useState<FoodForm>({
     name: "",
@@ -69,14 +67,18 @@ export default function UpdateFoodPage() {
     image: "",
     imageUrls: [],
   });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
-  const [categoryLoading, setCategoryLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [categories, setCategories] = useState<
+    { id: string; name: string }[]
+  >([]);
+  const [categoryLoading, setCategoryLoading] = useState(false);
   const [toppings, setToppings] = useState<Topping[]>([]);
   const [toppingName, setToppingName] = useState("");
   const [toppingPrice, setToppingPrice] = useState("");
@@ -88,31 +90,28 @@ export default function UpdateFoodPage() {
     const fetchCategories = async () => {
       setCategoryLoading(true);
       try {
-        const token = getToken?.();
-        if (!token) throw new Error("No token");
-        const data = await adminService.Category.getCategories(token, 1, 50);
+        const data = await guestService.category.getCategories(1, 100);
         setCategories(data.items || []);
       } catch (err) {
         console.error("Failed to fetch categories:", err);
         setCategories([]);
-        showNotification("Không thể tải danh mục", "error");
+        showNotification("Không thể tải danh mục món ăn", "error");
       } finally {
         setCategoryLoading(false);
       }
     };
     fetchCategories();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [showNotification]);
 
   // Fetch food data
   useEffect(() => {
     const fetchFood = async () => {
       if (!foodId) return;
       setInitialLoading(true);
-      setLoading(true);
       try {
         const token = getToken?.();
-        if (!token || !restaurantId) throw new Error("No token or restaurant ID");
+        if (!token || !restaurantId)
+          throw new Error("Phiên đăng nhập hết hạn hoặc thiếu mã nhà hàng");
         const food: FoodDetail = await userApi.food.getFoodById(token, foodId);
 
         let categoryId = food.category?.id || "";
@@ -136,12 +135,10 @@ export default function UpdateFoodPage() {
         });
         setPreview(food.image || "");
         setImagePreviews(food.imageUrls || []);
-        showNotification("Dữ liệu món ăn đã được tải", "success");
       } catch (err) {
         console.error("Failed to fetch food:", err);
         showNotification("Không thể tải dữ liệu món ăn", "error");
       } finally {
-        setLoading(false);
         setInitialLoading(false);
       }
     };
@@ -149,81 +146,83 @@ export default function UpdateFoodPage() {
     if (categories.length > 0) {
       fetchFood();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [foodId, categories]);
+  }, [foodId, categories, restaurantId, getToken, showNotification]);
 
-  // Fetch toppings when foodId changes
+  // Fetch toppings
   useEffect(() => {
     const fetchToppings = async () => {
       if (!foodId) return;
       try {
-        const token = getToken();
-        if (!token) return;
         const data = await userApi.food.getToppings(foodId);
         setToppings(data);
       } catch (err) {
-        if (err instanceof Error) {
-          console.error("Failed to fetch toppings:", err.message);
-          showNotification("Không thể tải dữ liệu topping", "error");
-        }
+        console.error("Failed to fetch toppings:", err);
         setToppings([]);
       }
     };
     fetchToppings();
-  }, [foodId, getToken, showNotification]);
+  }, [foodId]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        showNotification("Kích thước ảnh không được vượt quá 5MB", "error");
-        return;
-      }
-      setImageFile(file);
-      setPreview(URL.createObjectURL(file));
-      showNotification("Ảnh đã được chọn", "success");
+    if (errors[name]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
     }
   };
 
-  const handleImageUrlsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUrlsChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const files = Array.from(e.target.files || []);
-    const validFiles = files.filter((file) => file.size <= 5 * 1024 * 1024);
+    const validFiles = files.filter(
+      (file) => file.size <= 5 * 1024 * 1024,
+    );
 
     if (validFiles.length !== files.length) {
-      showNotification("Một số ảnh có kích thước quá lớn (>5MB) đã bị loại bỏ", "warning");
+      showNotification(
+        "Một số ảnh có kích thước quá lớn (>5MB) đã bị loại bỏ",
+        "warning",
+      );
     }
 
-    setImageFiles(validFiles);
-    setImagePreviews(validFiles.map((file) => URL.createObjectURL(file)));
-    if (validFiles.length > 0) {
-      showNotification(`Đã chọn ${validFiles.length} ảnh`, "success");
-    }
+    setImageFiles((prev) => [...prev, ...validFiles]);
+    const newPreviews = validFiles.map((file) =>
+      URL.createObjectURL(file),
+    );
+    setImagePreviews((prev) => [...prev, ...newPreviews]);
   };
 
-  const handleRemoveImage = (idx: number) => {
-    setImageFiles((prev) => prev.filter((_, i) => i !== idx));
+  const handleRemoveGalleryImage = (idx: number) => {
     setImagePreviews((prev) => prev.filter((_, i) => i !== idx));
-    showNotification("Đã xóa ảnh", "info");
+    setImageFiles((prev) => prev.filter((_, i) => i !== idx));
+    setForm((prev) => ({
+      ...prev,
+      imageUrls: (prev.imageUrls || []).filter((_, i) => i !== idx),
+    }));
   };
 
   const handleAddTopping = async () => {
     if (!toppingName.trim() || !toppingPrice.trim()) {
-      showNotification("Vui lòng nhập đầy đủ thông tin topping", "warning");
+      showNotification(
+        "Vui lòng nhập tên và giá cho topping",
+        "warning",
+      );
       return;
     }
-    
-    // Add price validation
+
     const priceValue = parseFloat(toppingPrice);
     if (isNaN(priceValue) || priceValue <= 0) {
-      showNotification("Giá topping phải là số dương hợp lệ", "error");
+      showNotification("Giá topping phải lớn hơn 0đ", "error");
       return;
     }
-    
+
     setToppingLoading(true);
     try {
       const token = getToken();
@@ -231,23 +230,19 @@ export default function UpdateFoodPage() {
 
       const newTopping = await userApi.food.addTopping(token, foodId, {
         name: toppingName.trim(),
-        price: priceValue.toString(), // Send as number, not string
+        price: priceValue.toString(),
       } as Topping);
 
       setToppings((prev) => [...prev, newTopping]);
       setToppingName("");
       setToppingPrice("");
-      setUploadProgress(0);
       showNotification("Đã thêm topping thành công", "success");
     } catch (err) {
-      if (err instanceof Error) {
-        showNotification(err.message || "Không thể thêm topping", "error");
-      } else {
-        showNotification("Thêm topping thất bại", "error");
-      }
+      const msg =
+        err instanceof Error ? err.message : "Thêm topping thất bại";
+      showNotification(msg, "error");
     } finally {
       setToppingLoading(false);
-      setUploadProgress(0);
     }
   };
 
@@ -260,28 +255,69 @@ export default function UpdateFoodPage() {
       setToppings((prev) => prev.filter((t) => t.id !== toppingId));
       showNotification("Đã xóa topping", "success");
     } catch (err) {
-      if (err instanceof Error) {
-        showNotification(err.message || "Không thể xóa topping", "error");
-      } else {
-        showNotification("Xóa topping thất bại", "error");
-      }
+      const msg =
+        err instanceof Error ? err.message : "Xóa topping thất bại";
+      showNotification(msg, "error");
     } finally {
       setToppingLoading(false);
     }
   };
 
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!form.name.trim()) {
+      newErrors.name = "Vui lòng nhập tên món ăn.";
+    }
+
+    if (!form.price || Number(form.price) <= 0) {
+      newErrors.price = "Giá món ăn phải lớn hơn 0đ.";
+    }
+
+    if (!form.categoryId) {
+      newErrors.categoryId = "Vui lòng chọn danh mục cho món ăn.";
+    }
+
+    if (!preview && !imageFile && !form.image) {
+      newErrors.image = "Vui lòng tải lên ảnh đại diện món ăn.";
+    }
+
+    if (form.discountPercent) {
+      const discount = Number(form.discountPercent);
+      if (discount < 0 || discount > 100) {
+        newErrors.discountPercent = "Phần trăm giảm giá từ 0 đến 100%.";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+
+    if (!validateForm()) {
+      showNotification(
+        "Vui lòng hoàn thành các trường bắt buộc",
+        "error",
+      );
+      return;
+    }
+
     setLoading(true);
     setUploadProgress(10);
 
     try {
       const token = getToken();
-      if (!token || !restaurantId || !foodId) throw new Error("No token or restaurant ID or food ID");
+      if (!token || !restaurantId || !foodId)
+        throw new Error(
+          "Phiên đăng nhập hết hạn hoặc thiếu mã nhà hàng",
+        );
 
       let imageUrl = form.image || "";
 
-      // Cover image upload
+      // 1. Cover image upload if newly selected
       if (imageFile) {
         setUploadProgress(25);
         const apiRequestBody = {
@@ -297,28 +333,35 @@ export default function UpdateFoodPage() {
         });
 
         if (!signedUrlResponse.ok) {
-          const errorData = await signedUrlResponse.json().catch(() => ({ message: "Không thể lấy URL tải lên." }));
-          throw new Error(errorData.message || `Lỗi khi lấy URL tải lên: ${signedUrlResponse.statusText}`);
+          const errorData = await signedUrlResponse
+            .json()
+            .catch(() => ({ message: "Không thể lấy URL tải lên." }));
+          throw new Error(
+            errorData.message ||
+              `Lỗi khi lấy URL: ${signedUrlResponse.statusText}`,
+          );
         }
-        const { url: signedUrl, publicUrl } = await signedUrlResponse.json();
-        if (!signedUrl || !publicUrl) throw new Error("Không nhận được URL hợp lệ từ máy chủ.");
+        const { url: signedUrl, publicUrl } =
+          await signedUrlResponse.json();
+        if (!signedUrl || !publicUrl)
+          throw new Error("Không nhận được URL hợp lệ từ máy chủ.");
 
         setUploadProgress(50);
         const minioUploadResponse = await fetch(signedUrl, {
           method: "PUT",
           body: imageFile,
-          headers: {
-            "Content-Type": imageFile.type,
-          },
+          headers: { "Content-Type": imageFile.type },
         });
         if (!minioUploadResponse.ok) {
-          throw new Error(`Tải ảnh lên MinIO thất bại: ${minioUploadResponse.statusText}`);
+          throw new Error(
+            `Tải ảnh lên thất bại: ${minioUploadResponse.statusText}`,
+          );
         }
         imageUrl = publicUrl;
       }
 
-      // Gallery images upload
-      const imageUrls: string[] = [];
+      // 2. New Gallery images upload
+      const uploadedUrls: string[] = [...(form.imageUrls || [])];
       if (imageFiles.length > 0) {
         setUploadProgress(60);
         for (let i = 0; i < imageFiles.length; i++) {
@@ -335,30 +378,21 @@ export default function UpdateFoodPage() {
             body: JSON.stringify(apiRequestBody),
           });
 
-          if (!signedUrlResponse.ok) {
-            const errorData = await signedUrlResponse.json().catch(() => ({ message: "Không thể lấy URL tải lên." }));
-            throw new Error(errorData.message || `Lỗi khi lấy URL tải lên: ${signedUrlResponse.statusText}`);
+          if (signedUrlResponse.ok) {
+            const { url: signedUrl, publicUrl } =
+              await signedUrlResponse.json();
+            if (signedUrl && publicUrl) {
+              const minioUploadResponse = await fetch(signedUrl, {
+                method: "PUT",
+                body: file,
+                headers: { "Content-Type": file.type },
+              });
+              if (minioUploadResponse.ok) {
+                uploadedUrls.push(publicUrl);
+              }
+            }
           }
-          const { url: signedUrl, publicUrl } = await signedUrlResponse.json();
-          if (!signedUrl || !publicUrl) throw new Error("Không nhận được URL hợp lệ từ máy chủ.");
-
-          const minioUploadResponse = await fetch(signedUrl, {
-            method: "PUT",
-            body: file,
-            headers: {
-              "Content-Type": file.type,
-            },
-          });
-          if (!minioUploadResponse.ok) {
-            throw new Error(`Tải ảnh lên MinIO thất bại: ${minioUploadResponse.statusText}`);
-          }
-          imageUrls.push(publicUrl);
-          setUploadProgress(60 + (i + 1) * (20 / imageFiles.length));
         }
-      }
-
-      if (!imageUrl && imageUrls.length > 0) {
-        imageUrl = imageUrls[0];
       }
 
       setUploadProgress(90);
@@ -366,9 +400,11 @@ export default function UpdateFoodPage() {
         ...form,
         restaurantId,
         image: imageUrl,
-        imageUrls,
+        imageUrls: uploadedUrls,
         preparationTime:
-        form.preparationTime?.trim() === "" ? null : Number(form.preparationTime),
+          form.preparationTime?.trim() === ""
+            ? null
+            : Number(form.preparationTime),
       };
 
       await userApi.food.updateFood(token, foodId, updateData);
@@ -377,373 +413,538 @@ export default function UpdateFoodPage() {
       showNotification("Cập nhật món ăn thành công!", "success");
       setTimeout(() => {
         router.push(`/restaurant/${restaurantId}/edit/food-list`);
-      }, 1000);
+      }, 700);
     } catch (err) {
-      if (err instanceof Error) {
-        showNotification(err.message, "error");
-      } else {
-        showNotification("Cập nhật món ăn thất bại", "error");
-      }
+      const msg =
+        err instanceof Error ? err.message : "Cập nhật món ăn thất bại";
+      showNotification(msg, "error");
     } finally {
       setLoading(false);
       setUploadProgress(0);
     }
   };
 
+  const selectedCategoryName =
+    categories.find((c) => c.id === form.categoryId)?.name ||
+    "Chưa phân loại";
+
+  const numPrice = Number(form.price) || 0;
+  const numDiscount = Number(form.discountPercent) || 0;
+  const discountedPrice =
+    numDiscount > 0 ? numPrice * (1 - numDiscount / 100) : numPrice;
+
   if (initialLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-        <Card className="w-80 p-8">
-          <div className="flex flex-col items-center space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900">Đang tải dữ liệu</h3>
-              <p className="text-sm text-gray-500">Vui lòng đợi trong giây lát...</p>
-            </div>
-          </div>
-        </Card>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 space-y-3">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground font-medium">
+          Đang tải thông tin món ăn...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50  py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
+    <div className="min-h-screen py-8 px-3 sm:px-6">
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* Navigation & Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <Button
-            variant="ghost"
+            variant="outline"
+            size="sm"
             onClick={() => router.back()}
-            className="mb-4 hover:bg-white/50"
+            disabled={loading}
+            className="flex items-center gap-1.5 font-medium rounded-xl"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Quay lại
+            <ArrowLeft className="w-4 h-4" />
+            <span>Quay lại thực đơn</span>
           </Button>
-          <Card className="bg-white/80 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-2xl font-bold text-center flex items-center justify-center gap-2">
-                <ImageIcon className="w-6 h-6 text-primary" />
-                Cập nhật món ăn
-              </CardTitle>
-            </CardHeader>
-          </Card>
+
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
+              Mã món: #{foodId?.slice(-6)}
+            </span>
+          </div>
+        </div>
+
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            Chỉnh sửa món ăn
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+            Cập nhật giá, khuyến mãi, danh mục và quản lý các loại topping đi
+            kèm
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Information */}
-          <Card className="bg-white/80 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Tag className="w-5 h-5" />
-                Thông tin cơ bản
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name" className="flex items-center gap-2">
-                    Tên món ăn <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={form.name}
-                    onChange={handleChange}
-                    required
-                    className="mt-1"
-                    placeholder="Nhập tên món ăn"
-                  />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left 2 Cols: Form Fields */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Section 1: Basic Information */}
+              <div className="rounded-2xl border border-border bg-card shadow-2xs overflow-hidden">
+                <div className="bg-muted/50 px-6 py-3.5 border-b border-border/70 flex items-center gap-2.5">
+                  <Tag className="w-4 h-4 text-primary" />
+                  <h2 className="text-base font-bold text-foreground">
+                    Thông tin cơ bản
+                  </h2>
                 </div>
-                <div>
-                  <Label htmlFor="price" className="flex items-center gap-2">
-                    <DollarSign className="w-4 h-4" />
-                    Giá (VND) <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="price"
-                    name="price"
-                    type="number"
-                    value={form.price}
-                    onChange={handleChange}
-                    required
-                    className="mt-1"
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="discountPercent">Giảm giá (%)</Label>
-                  <Input
-                    id="discountPercent"
-                    name="discountPercent"
-                    type="number"
-                    value={form.discountPercent}
-                    onChange={handleChange}
-                    className="mt-1"
-                    placeholder="0"
-                    min="0"
-                    max="100"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="categoryId">
-                    Danh mục <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={form.categoryId}
-                    onValueChange={(value) =>
-                      setForm((prev) => ({ ...prev, categoryId: value }))
-                    }
-                    disabled={categoryLoading}
-                    required
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Chọn danh mục" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="preparationTime" className="flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    Thời gian chuẩn bị (phút)
-                  </Label>
-                  <Input
-                    id="preparationTime"
-                    name="preparationTime"
-                    type="number"
-                    value={form.preparationTime}
-                    onChange={handleChange}
-                    className="mt-1"
-                    placeholder="0"
-                    min="0"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="description">Mô tả</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  value={form.description}
-                  onChange={handleChange}
-                  className="mt-1"
-                  placeholder="Mô tả chi tiết về món ăn..."
-                  rows={3}
-                />
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* Images */}
-          <Card className="bg-white/80 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Camera className="w-5 h-5" />
-                Hình ảnh
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Cover Image */}
-              <div>
-                <Label htmlFor="image" className="block mb-2">Ảnh đại diện</Label>
-                <div className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <Input
-                      id="image"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-                    />
-                  </div>
-                  {preview && (
-                    <div className="relative">
-                      <Image
-                        src={preview}
-                        alt="Preview"
-                        width={80}
-                        height={80}
-                        unoptimized
-                        className="w-20 h-20 object-cover rounded-lg border-2 border-gray-200"
+                <div className="p-6 space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <FormField
+                      label="Tên món ăn"
+                      description="Tên món hiển thị trên menu"
+                      error={errors.name}
+                      required
+                    >
+                      <Input
+                        id="foodName"
+                        name="name"
+                        value={form.name}
+                        onChange={handleChange}
+                        placeholder="Ví dụ: Cơm tấm sườn bì chả"
+                        disabled={loading}
+                        className="h-10 rounded-xl"
                       />
-                    </div>
-                  )}
+                    </FormField>
+
+                    <FormField
+                      label="Giá bán (VNĐ)"
+                      description="Giá gốc niêm yết của món"
+                      error={errors.price}
+                      required
+                    >
+                      <Input
+                        id="foodPrice"
+                        name="price"
+                        type="number"
+                        value={form.price}
+                        onChange={handleChange}
+                        placeholder="45000"
+                        disabled={loading}
+                        min="1000"
+                        className="h-10 rounded-xl"
+                      />
+                    </FormField>
+
+                    <FormField
+                      label="Giảm giá (%)"
+                      description="Phần trăm ưu đãi (0 - 100%)"
+                      error={errors.discountPercent}
+                    >
+                      <Input
+                        id="foodDiscount"
+                        name="discountPercent"
+                        type="number"
+                        value={form.discountPercent}
+                        onChange={handleChange}
+                        placeholder="0"
+                        min="0"
+                        max="100"
+                        disabled={loading}
+                        className="h-10 rounded-xl"
+                      />
+                    </FormField>
+
+                    <FormField
+                      label="Danh mục món ăn"
+                      description="Phân loại để khách dễ tìm kiếm"
+                      error={errors.categoryId}
+                      required
+                    >
+                      <Select
+                        value={form.categoryId}
+                        onValueChange={(value) => {
+                          setForm((prev) => ({
+                            ...prev,
+                            categoryId: value,
+                          }));
+                          if (errors.categoryId) {
+                            setErrors((prev) => {
+                              const next = { ...prev };
+                              delete next.categoryId;
+                              return next;
+                            });
+                          }
+                        }}
+                        disabled={categoryLoading || loading}
+                      >
+                        <SelectTrigger
+                          id="foodCategory"
+                          className="h-10 rounded-xl"
+                        >
+                          <SelectValue placeholder="Chọn danh mục" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.id}>
+                              {cat.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormField>
+
+                    <FormField
+                      label="Thời gian chế biến (phút)"
+                      description="Thời gian làm xong món trung bình"
+                      error={errors.preparationTime}
+                    >
+                      <Input
+                        id="foodPrepTime"
+                        name="preparationTime"
+                        type="number"
+                        value={form.preparationTime}
+                        onChange={handleChange}
+                        placeholder="15"
+                        min="1"
+                        disabled={loading}
+                        className="h-10 rounded-xl"
+                      />
+                    </FormField>
+                  </div>
+
+                  <FormField
+                    label="Mô tả món ăn"
+                    description="Mô tả hương vị, nguyên liệu đặc trưng, khẩu phần"
+                    error={errors.description}
+                  >
+                    <Textarea
+                      id="foodDescription"
+                      name="description"
+                      value={form.description}
+                      onChange={handleChange}
+                      placeholder="Mô tả chi tiết nguyên liệu, hương vị đặc sắc..."
+                      rows={3}
+                      disabled={loading}
+                      className="rounded-xl resize-none"
+                    />
+                  </FormField>
                 </div>
               </div>
 
-              {/* Gallery Images */}
-              <div>
-                <Label htmlFor="imageUrls" className="block mb-2">Thư viện ảnh</Label>
-                <Input
-                  id="imageUrls"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUrlsChange}
-                  className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-                />
-                {imagePreviews.length > 0 && (
-                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {imagePreviews.map((src, idx) => (
-                      <div key={idx} className="relative group">
-                        <Image
-                          src={src}
-                          alt={`Preview ${idx + 1}`}
-                          width={200}
-                          height={96}
-                          unoptimized
-                          className="w-full h-24 object-cover rounded-lg border-2 border-gray-200"
+              {/* Section 2: Image Upload */}
+              <div className="rounded-2xl border border-border bg-card shadow-2xs overflow-hidden">
+                <div className="bg-muted/50 px-6 py-3.5 border-b border-border/70 flex items-center gap-2.5">
+                  <Camera className="w-4 h-4 text-primary" />
+                  <h2 className="text-base font-bold text-foreground">
+                    Hình ảnh món ăn
+                  </h2>
+                </div>
+
+                <div className="p-6 space-y-6">
+                  {/* Cover Image */}
+                  <FileUpload
+                    label="Ảnh đại diện món ăn *"
+                    description="Ảnh chất lượng cao hiển thị trên danh sách tìm kiếm và thực đơn (Tối đa 5MB)"
+                    value={preview}
+                    onChange={(file, previewUrl) => {
+                      setImageFile(file);
+                      setPreview(previewUrl);
+                      if (errors.image) {
+                        setErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.image;
+                          return next;
+                        });
+                      }
+                    }}
+                    maxSizeMB={5}
+                    isUploading={loading}
+                    uploadProgress={
+                      uploadProgress > 0 ? uploadProgress : undefined
+                    }
+                    disabled={loading}
+                    error={errors.image}
+                  />
+
+                  {/* Additional Gallery */}
+                  <div className="space-y-3 pt-4 border-t border-border/60">
+                    <div className="flex items-baseline justify-between">
+                      <label className="text-sm font-semibold text-foreground">
+                        Thư viện ảnh bổ sung ({imagePreviews.length} ảnh)
+                      </label>
+                      <span className="text-xs text-muted-foreground">
+                        Tối đa 5MB mỗi ảnh
+                      </span>
+                    </div>
+
+                    <div className="border-2 border-dashed border-border rounded-xl p-4 text-center hover:bg-muted/20 transition-colors">
+                      <Input
+                        id="foodGallery"
+                        type="file"
+                        accept="image/png, image/jpeg, image/webp"
+                        multiple
+                        onChange={handleImageUrlsChange}
+                        className="hidden"
+                        disabled={loading}
+                      />
+                      <label
+                        htmlFor="foodGallery"
+                        className="cursor-pointer flex flex-col items-center gap-2 py-2"
+                      >
+                        <Plus className="w-6 h-6 text-primary" />
+                        <span className="text-xs font-medium text-foreground">
+                          Chọn thêm ảnh phụ cho món ăn
+                        </span>
+                      </label>
+                    </div>
+
+                    {imagePreviews.length > 0 && (
+                      <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 pt-2">
+                        {imagePreviews.map((src, idx) => (
+                          <div
+                            key={idx}
+                            className="relative h-20 w-full overflow-hidden rounded-xl border border-border bg-muted group"
+                          >
+                            <Image
+                              src={src}
+                              alt={`Ảnh phụ ${idx + 1}`}
+                              fill
+                              className="object-cover"
+                              sizes="100px"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveGalleryImage(idx)}
+                              aria-label={`Xóa ảnh phụ ${idx + 1}`}
+                              className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-80 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3: Topping Management */}
+              <div className="rounded-2xl border border-border bg-card shadow-2xs overflow-hidden">
+                <div className="bg-muted/50 px-6 py-3.5 border-b border-border/70 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    <h2 className="text-base font-bold text-foreground">
+                      Tùy chọn Topping ({toppings.length})
+                    </h2>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    Khách có thể chọn thêm khi đặt
+                  </span>
+                </div>
+
+                <div className="p-6 space-y-5">
+                  {/* Add Topping Form */}
+                  <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-3">
+                    <p className="text-xs font-semibold text-foreground">
+                      Thêm topping mới
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                      <div className="sm:col-span-3">
+                        <Input
+                          placeholder="Tên topping (ví dụ: Trứng ốp la, Phô mai...)"
+                          value={toppingName}
+                          onChange={(e) => setToppingName(e.target.value)}
+                          className="h-10 rounded-xl"
+                          disabled={toppingLoading}
                         />
-                        <button
+                      </div>
+                      <div className="sm:col-span-2">
+                        <Input
+                          placeholder="Giá thêm (VNĐ)"
+                          type="number"
+                          value={toppingPrice}
+                          onChange={(e) => setToppingPrice(e.target.value)}
+                          className="h-10 rounded-xl"
+                          min="1000"
+                          disabled={toppingLoading}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleAddTopping}
+                        disabled={
+                          toppingLoading ||
+                          !toppingName.trim() ||
+                          !toppingPrice.trim()
+                        }
+                        className="rounded-xl font-medium"
+                      >
+                        {toppingLoading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                            <span>Đang thêm...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-4 h-4 mr-1.5" />
+                            <span>Thêm topping</span>
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Toppings List */}
+                  <div className="space-y-2">
+                    {toppings.map((topping) => (
+                      <div
+                        key={topping.id}
+                        className="flex items-center justify-between p-3 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="w-2 h-2 rounded-full bg-primary" />
+                          <span className="text-sm font-semibold text-foreground">
+                            {topping.name}
+                          </span>
+                          <Badge
+                            variant="secondary"
+                            className="bg-primary/10 text-primary border border-primary/20 text-xs font-bold"
+                          >
+                            +{Number(topping.price).toLocaleString("vi-VN")} đ
+                          </Badge>
+                        </div>
+                        <Button
                           type="button"
-                          onClick={() => handleRemoveImage(idx)}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                          title="Xóa ảnh"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveTopping(topping.id)}
+                          disabled={toppingLoading}
+                          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg h-8 w-8 p-0"
+                          title="Xóa topping"
                         >
-                          <X className="w-4 h-4" />
-                        </button>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     ))}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* Toppings */}
-          <Card className="bg-white/80 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Plus className="w-5 h-5" />
-                Topping
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Add Topping Form */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input
-                  placeholder="Tên topping"
-                  value={toppingName}
-                  onChange={(e) => setToppingName(e.target.value)}
-                />
-                <Input
-                  placeholder="Giá"
-                  type="number"
-                  value={toppingPrice}
-                  onChange={(e) => setToppingPrice(e.target.value)}
-                />
-              </div>
-
-              <Button
-                type="button"
-                onClick={handleAddTopping}
-                disabled={toppingLoading || !toppingName || !toppingPrice}
-                className="w-full"
-              >
-                {toppingLoading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Đang thêm...
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Plus className="w-4 h-4" />
-                    Thêm topping
-                  </div>
-                )}
-              </Button>
-
-              {uploadProgress > 0 && uploadProgress < 100 && (
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-primary h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${uploadProgress}%` }}
-                  ></div>
-                </div>
-              )}
-
-              {/* Toppings List */}
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {toppings.map((topping) => (
-                  <div key={topping.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    {topping.image && (
-                      <Image
-                        src={topping.image}
-                        alt={topping.name}
-                        width={48}
-                        height={48}
-                        className="w-12 h-12 object-cover rounded-lg border"
-                      />
+                    {toppings.length === 0 && (
+                      <p className="text-center text-xs text-muted-foreground py-6">
+                        Chưa có món ăn kèm hoặc topping nào được cấu hình
+                      </p>
                     )}
-                    <div className="flex-1">
-                      <span className="font-medium">{topping.name}</span>
-                      <Badge variant="secondary" className="ml-2 hover:text-primary bg-primary">
-                        {Number(topping.price).toLocaleString()}₫
-                      </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Col: Live Customer Card Preview & Submit */}
+            <div className="space-y-6">
+              {/* Live Preview Card */}
+              <div className="rounded-2xl border border-border bg-card shadow-2xs overflow-hidden sticky top-20">
+                <div className="bg-muted/50 px-4 py-3 border-b border-border/70 flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-bold text-foreground">
+                    Xem trước hiển thị với khách
+                  </h3>
+                </div>
+
+                <div className="p-4 space-y-4">
+                  {/* Food Card Preview */}
+                  <div className="rounded-2xl border border-border overflow-hidden bg-card shadow-xs group">
+                    <div className="relative aspect-4/3 w-full bg-muted overflow-hidden">
+                      {preview ? (
+                        <Image
+                          src={preview}
+                          alt="Xem trước món ăn"
+                          fill
+                          className="object-cover"
+                          sizes="300px"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
+                          <UtensilsCrossed className="w-8 h-8 opacity-40" />
+                          <span className="text-xs">Chưa có ảnh món</span>
+                        </div>
+                      )}
+
+                      {numDiscount > 0 && (
+                        <div className="absolute top-2.5 left-2.5 bg-red-600 text-white font-bold text-[11px] px-2 py-0.5 rounded-full shadow-xs">
+                          -{numDiscount}%
+                        </div>
+                      )}
+
+                      {form.preparationTime && (
+                        <div className="absolute bottom-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          <span>{form.preparationTime} phút</span>
+                        </div>
+                      )}
                     </div>
+
+                    <div className="p-3.5 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">
+                          {selectedCategoryName}
+                        </span>
+                      </div>
+
+                      <h4 className="font-bold text-foreground text-sm line-clamp-1">
+                        {form.name || "Tên món ăn của bạn"}
+                      </h4>
+
+                      <p className="text-xs text-muted-foreground line-clamp-2 min-h-8">
+                        {form.description ||
+                          "Mô tả món ăn sẽ hiển thị tại đây khi thực khách lướt menu..."}
+                      </p>
+
+                      <div className="pt-2 border-t border-border flex items-baseline justify-between">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-base font-extrabold text-primary">
+                            {discountedPrice.toLocaleString("vi-VN")} đ
+                          </span>
+                          {numDiscount > 0 && (
+                            <span className="text-xs text-muted-foreground line-through">
+                              {numPrice.toLocaleString("vi-VN")} đ
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-muted-foreground">
+                          {toppings.length} topping
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="space-y-2.5 pt-2">
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full font-bold h-11 rounded-xl shadow-xs"
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          <span>Đang lưu ({uploadProgress}%)...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-1.5" />
+                          <span>Lưu thay đổi</span>
+                        </>
+                      )}
+                    </Button>
+
                     <Button
                       type="button"
-                      size="sm"
-                      variant="destructive"
-                      className=" hover:text-red-600 hover:bg-white/80"
-                      onClick={() => handleRemoveTopping(topping.id)}
-                      disabled={toppingLoading}
+                      variant="outline"
+                      onClick={() => router.back()}
+                      disabled={loading}
+                      className="w-full rounded-xl"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      Hủy bỏ
                     </Button>
                   </div>
-                ))}
-                {toppings.length === 0 && (
-                  <p className="text-center text-gray-500 py-8">Chưa có topping nào</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Submit Button */}
-          <Card className="bg-white/80 backdrop-blur-sm">
-            <CardContent className="pt-6">
-              {loading && uploadProgress > 0 && (
-                <div className="mb-4">
-                  <div className="flex justify-between text-sm text-gray-600 mb-1">
-                    <span>Đang cập nhật...</span>
-                    <span>{uploadProgress}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-primary h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${uploadProgress}%` }}
-                    ></div>
-                  </div>
                 </div>
-              )}
-
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 text-lg font-semibold hover:text-primary "
-                size="lg"
-              >
-                {loading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    Đang cập nhật...
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Save className="w-5 h-5" />
-                    Cập nhật món ăn
-                  </div>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
+              </div>
+            </div>
+          </div>
         </form>
       </div>
     </div>

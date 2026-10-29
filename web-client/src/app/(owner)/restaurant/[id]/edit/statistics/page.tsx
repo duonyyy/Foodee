@@ -163,7 +163,7 @@ export default function StatisticsPage() {
           breadcrumbs={[
             {
               label: "Quản lý nhà hàng",
-              href: `/restaurant/${restaurantId}/edit`,
+              href: `/restaurant/${restaurantId}/edit/basic-info`,
             },
             { label: "Báo cáo thống kê" },
           ]}
@@ -298,43 +298,56 @@ export default function StatisticsPage() {
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-            {topFoods.map((food, index) => (
-              <div
-                key={food.id || index}
-                className="flex items-center gap-3.5 p-3.5 rounded-xl border border-border bg-muted/20 hover:bg-muted/40 transition-colors"
-              >
-                <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-muted shrink-0 border border-border">
-                  <Image
-                    src={food.image}
-                    alt={food.name}
-                    fill
-                    className="object-cover"
-                    sizes="56px"
-                  />
-                </div>
-                <div className="min-w-0 flex-1 space-y-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                      #{index + 1}
-                    </span>
-                    <h4 className="font-semibold text-foreground text-sm truncate">
-                      {food.name}
-                    </h4>
+            {topFoods.map((food, index) => {
+              const rankBadgeClass =
+                index === 0
+                  ? "bg-amber-500 text-white font-bold"
+                  : index === 1
+                  ? "bg-slate-400 text-white font-bold"
+                  : index === 2
+                  ? "bg-amber-700 text-white font-bold"
+                  : "bg-muted text-muted-foreground font-semibold";
+
+              return (
+                <div
+                  key={food.id || index}
+                  className="flex items-center gap-3.5 p-3.5 rounded-xl border border-border bg-card hover:bg-muted/30 transition-all hover:shadow-xs"
+                >
+                  <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-muted shrink-0 border border-border">
+                    <Image
+                      src={food.image}
+                      alt={food.name}
+                      fill
+                      className="object-cover"
+                      sizes="56px"
+                    />
                   </div>
-                  <div className="text-xs text-muted-foreground flex items-center justify-between">
-                    <span>
-                      Đã bán:{" "}
-                      <strong className="text-foreground">
-                        {food.soldCount}
-                      </strong>
-                    </span>
-                    <span className="font-semibold text-emerald-600">
-                      {food.revenue.toLocaleString("vi-VN")} đ
-                    </span>
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${rankBadgeClass}`}
+                      >
+                        #{index + 1}
+                      </span>
+                      <h4 className="font-semibold text-foreground text-sm truncate">
+                        {food.name}
+                      </h4>
+                    </div>
+                    <div className="text-xs text-muted-foreground flex items-center justify-between">
+                      <span>
+                        Đã bán:{" "}
+                        <strong className="text-foreground">
+                          {food.soldCount}
+                        </strong>
+                      </span>
+                      <span className="font-semibold text-emerald-600">
+                        {food.revenue.toLocaleString("vi-VN")} đ
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

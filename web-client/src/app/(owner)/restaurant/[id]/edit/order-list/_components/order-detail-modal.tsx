@@ -188,24 +188,26 @@ export function OrderDetailModal({
         )}
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 text-white">
+        <div className="bg-card px-6 py-4 border-b border-border text-foreground">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold">Chi tiết đơn hàng #{order.id.slice(-8)}</h2>
-              <p className="text-amber-100 text-sm">{formatTime(order.createdAt)}</p>
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-lg font-bold text-foreground">
+                  Chi tiết đơn hàng #{order.id.slice(-8).toUpperCase()}
+                </h2>
+                <StatusBadge status={order.status || 'pending'} size="sm" />
+              </div>
+              <p className="text-muted-foreground text-xs mt-0.5">{formatTime(order.createdAt)}</p>
             </div>
-            <div className="flex items-center space-x-3">
-              <StatusBadge status={order.status || 'pending'} size="md" />
-              <button
-                type="button"
-                aria-label="Đóng chi tiết đơn hàng"
-                title="Đóng"
-                onClick={onClose}
-                className="p-2 hover:bg-white/20 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+            <button
+              type="button"
+              aria-label="Đóng chi tiết đơn hàng"
+              title="Đóng"
+              onClick={onClose}
+              className="p-2 hover:bg-muted text-muted-foreground hover:text-foreground rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
@@ -214,30 +216,30 @@ export function OrderDetailModal({
           <div className={`grid grid-cols-1 ${hasShippingDetail ? 'xl:grid-cols-3' : 'lg:grid-cols-2'} gap-8`}>
             {/* Customer Information */}
             <div className="space-y-6">
-              <div className="bg-gray-50 rounded-xl p-4">
-                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <User className="w-5 h-5 text-amber-600" />
+              <div className="bg-muted/30 border border-border/60 rounded-xl p-4">
+                <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <User className="w-5 h-5 text-primary" />
                   Thông tin khách hàng
                 </h3>
                 <div className="space-y-2">
-                  <p className="text-gray-700">
-                    <span className="font-medium">Tên:</span> {order.user?.name || 'Ẩn danh'}
+                  <p className="text-muted-foreground text-sm">
+                    <span className="font-medium text-foreground">Tên:</span> {order.user?.name || 'Ẩn danh'}
                   </p>
                   {order.user?.phone && (
-                    <p className="text-gray-700 flex items-center gap-2">
-                      <Phone className="w-4 h-4" />
+                    <p className="text-muted-foreground text-sm flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-primary" />
                       {order.user.phone}
                     </p>
                   )}
                 </div>
               </div>
 
-              <div className="bg-gray-50 rounded-xl p-4">
-                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-amber-600" />
+              <div className="bg-muted/30 border border-border/60 rounded-xl p-4">
+                <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-primary" />
                   Địa chỉ giao hàng
                 </h3>
-                <p className="text-gray-700">
+                <p className="text-muted-foreground text-sm">
                   {order.address ? 
                     [order.address.street, order.address.ward, order.address.district, order.address.city]
                       .filter(Boolean)
@@ -248,24 +250,24 @@ export function OrderDetailModal({
               </div>
 
               {order.note && (
-                <div className="bg-yellow-50 rounded-xl p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2">Ghi chú</h3>
-                  <p className="text-gray-700">{order.note}</p>
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+                  <h3 className="font-semibold text-foreground mb-2">Ghi chú</h3>
+                  <p className="text-muted-foreground text-sm">{order.note}</p>
                 </div>
               )}
 
               {/* Order Timeline */}
-              <div className="bg-gray-50 rounded-xl p-4">
-                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-amber-600" />
+              <div className="bg-muted/30 border border-border/60 rounded-xl p-4">
+                <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-primary" />
                   Thời gian
                 </h3>
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Đặt hàng:</span> {formatTime(order.createdAt)}
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">Đặt hàng:</span> {formatTime(order.createdAt)}
                   </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Cập nhật cuối:</span> {formatTime(order.updatedAt)}
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">Cập nhật cuối:</span> {formatTime(order.updatedAt)}
                   </p>
                 </div>
               </div>
@@ -273,32 +275,32 @@ export function OrderDetailModal({
 
             {/* Order Details */}
             <div className="space-y-6">
-              <div className="bg-gray-50 rounded-xl p-4">
-                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <Package className="w-5 h-5 text-amber-600" />
-                  Chi tiết đơn hàng
+              <div className="bg-muted/30 border border-border/60 rounded-xl p-4">
+                <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Package className="w-5 h-5 text-primary" />
+                  Chi tiết món đã đặt
                 </h3>
                 <div className="space-y-3">
                   {order.orderDetails?.map((item, index) => (
-                    <div key={index} className="flex items-center gap-3 bg-white rounded-lg p-3">
+                    <div key={index} className="flex items-center gap-3 bg-card border border-border/70 rounded-xl p-3">
                       {item.food?.image && (
                         <Image
                           src={item.food.image}
                           alt={item.food.name}
                           width={48}
                           height={48}
-                          className="w-12 h-12 object-cover rounded-lg"
+                          className="w-12 h-12 object-cover rounded-lg border border-border"
                         />
                       )}
                       <div className="flex-1">
-                        <p className="font-medium text-gray-900">{item.food?.name}</p>
-                        <p className="text-sm text-gray-600">
-                          {item.quantity} x {Number(item.price).toLocaleString('vi-VN')}đ
+                        <p className="font-medium text-foreground text-sm">{item.food?.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.quantity} x {Number(item.price).toLocaleString('vi-VN')} đ
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-medium text-gray-900">
-                          {(Number(item.price) * item.quantity).toLocaleString('vi-VN')}đ
+                        <p className="font-bold text-foreground text-sm">
+                          {(Number(item.price) * item.quantity).toLocaleString('vi-VN')} đ
                         </p>
                       </div>
                     </div>
@@ -306,19 +308,19 @@ export function OrderDetailModal({
                 </div>
               </div>
 
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200">
+              <div className="bg-card rounded-xl p-4 border border-border shadow-2xs">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                    <DollarSign className="w-5 h-5 text-amber-600" />
-                    Tổng tiền
+                  <h3 className="font-semibold text-foreground flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-primary" />
+                    Tổng thanh toán
                   </h3>
-                  <p className="text-2xl font-bold text-amber-600">
-                    {(order.total || 0).toLocaleString('vi-VN')}đ
+                  <p className="text-2xl font-extrabold text-primary">
+                    {(order.total || 0).toLocaleString('vi-VN')} đ
                   </p>
                 </div>
                 {order.promotionCode && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    Đã áp dụng mã: {order.promotionCode.code}
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Mã ưu đãi áp dụng: <span className="font-bold text-primary">{order.promotionCode.code}</span>
                   </p>
                 )}
               </div>
@@ -368,12 +370,12 @@ export function OrderDetailModal({
                 )}
 
                 {/* Map Section - Always show map if shippingDetail exists */}
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-amber-600" />
-                    Theo dõi đơn hàng
+                <div className="bg-muted/30 border border-border/60 rounded-xl p-4">
+                  <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-primary" />
+                    Theo dõi lộ trình giao hàng
                   </h3>
-                  <div className="w-full h-[300px] rounded-lg overflow-hidden bg-gray-100">
+                  <div className="w-full h-[300px] rounded-xl overflow-hidden bg-muted border border-border/70">
                     {/* Subscribe to shipper location only when shipper is assigned and status is shipper_received or delivering */}
                     {shipper && (order.status === "shipper_received" || order.status === "delivering") && (
                       <ShipperLocationSubscriber
@@ -390,7 +392,7 @@ export function OrderDetailModal({
                       userLocation={userLocation}
                     />
                   </div>
-                  <p className="text-xs text-gray-500 mt-2 text-center">
+                  <p className="text-xs text-muted-foreground mt-2 text-center">
                     {shipper
                       ? order.status === "shipper_received"
                         ? "Tài xế đang trên đường đến nhà hàng"
@@ -407,7 +409,7 @@ export function OrderDetailModal({
 
         {/* Footer with Action Buttons */}
         {getStatusButtons() && (
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+          <div className="bg-card px-6 py-4 border-t border-border">
             <div className="flex justify-end space-x-3">
               {getStatusButtons()}
             </div>

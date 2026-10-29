@@ -121,30 +121,39 @@ export default function EditRestaurantLayout({
                 <Sidebar />
 
                 {/* Main Content Area */}
-                <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 lg:p-10">
-                    {/* Header Section with Mobile Toggle */}
-                    <header className="mb-6 pb-4 border-b border-border/60">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <div className="flex items-center gap-3">
-                                <MobileOwnerNav />
-                                <div>
-                                    <span className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground block">
-                                        Quản lý nhà hàng
-                                    </span>
-                                    <p className="text-sm text-muted-foreground mt-1">
-                                        Cập nhật thông tin và quản lý hoạt động nhà hàng của bạn
-                                    </p>
-                                </div>
+                <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                    {/* Top Bar */}
+                    <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-border/70 bg-card/85 px-4 backdrop-blur supports-[backdrop-filter]:bg-card/75 sm:px-6 lg:px-8">
+                        <div className="flex items-center gap-3">
+                            <MobileOwnerNav />
+                            <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+                                <Link href="/" className="hover:text-foreground transition-colors">Foodee</Link>
+                                <span>/</span>
+                                <Link href="/my-shop" className="hover:text-foreground transition-colors">Quán của tôi</Link>
+                                <span>/</span>
+                                <span className="font-semibold text-foreground">Kênh quản trị</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <StatusBadge status="approved" label="Đang hoạt động" />
-                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <StatusBadge status="approved" label="Đang nhận đơn" />
+                            <Link
+                                href={`/restaurant/${restaurantId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hidden md:inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-xs transition hover:bg-accent"
+                            >
+                                <span>Xem trang quán</span>
+                                <span className="text-muted-foreground text-xs">↗</span>
+                            </Link>
                         </div>
                     </header>
 
                     {/* Content */}
-                    {children}
-                </main>
+                    <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 lg:p-10">
+                        {children}
+                    </main>
+                </div>
 
                 {/* Notification Popup */}
                 <NotificationPopup />

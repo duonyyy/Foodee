@@ -9,6 +9,8 @@ import { userApi } from '@/api/user';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 
+import { PageHeader } from "@/components/ui/page-header";
+
 export default function BasicInfoPage() {
     const { getToken, loading: authLoading } = useAuth();
     const params = useParams();
@@ -56,10 +58,7 @@ export default function BasicInfoPage() {
 
     // Utility to split address string
     function parseAddress(full: string) {
-        // Split by comma and trim spaces
         const parts = full.split(',').map(p => p.trim());
-        // Example: ["Ngõ 107a Tôn Đức Thắng", "Hàng Bột", "11500", "Đống Đa", "Hà Nội", "Việt Nam"]
-
         return {
             street: parts[0] || '',
             ward: parts[1] && parts[2] ? `${parts[1]}, ${parts[2]}` : (parts[1] || ''),
@@ -107,7 +106,7 @@ export default function BasicInfoPage() {
         try {
             const token = await getToken() ?? '';
             if (!token) {
-                toast.error("Authentication token required");
+                toast.error("Vui lòng đăng nhập lại");
                 return;
             }
 
@@ -120,24 +119,31 @@ export default function BasicInfoPage() {
                     key !== 'foods' &&
                     value !== undefined
                 ) {
-                    // Prevent sending address object as string
                     if (key === 'address' && typeof value === 'object') return;
                     formData.append(key, String(value));
                 }
             });
 
             await userApi.restaurant.updateRestaurant(token, restaurantId!, formData);
-            toast.success("Restaurant information updated successfully");
+            toast.success("Đã cập nhật thông tin nhà hàng thành công!");
         } catch (err) {
             console.error("Failed to update restaurant:", err);
-            toast.error("Failed to update restaurant information");
+            toast.error("Không thể cập nhật thông tin lúc này");
         } finally {
             setSaving(false);
         }
     };
 
     return (
-        <div className="max-w-2xl mx-auto py-8">
+        <div className="max-w-4xl mx-auto py-2 px-1 sm:px-2 space-y-6">
+            <PageHeader
+                title="Thông tin cơ bản của quán"
+                description="Cập nhật tên quán, tọa độ bản đồ đón khách, giờ mở cửa và hotline"
+                breadcrumbs={[
+                    { label: "Bảng điều khiển", href: `/restaurant/${restaurantId}/edit/statistics` },
+                    { label: "Thông tin cơ bản" },
+                ]}
+            />
             <CommonInfoForm
                 restaurant={restaurant}
                 handleInputChange={handleInputChange}

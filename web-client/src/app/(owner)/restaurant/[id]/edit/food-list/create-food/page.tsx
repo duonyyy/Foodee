@@ -19,10 +19,13 @@ import { useAuth } from "@/context/auth-context";
 import {
   ArrowLeft,
   Camera,
+  Clock,
+  Eye,
   Loader2,
   Plus,
   Save,
   Tag,
+  UtensilsCrossed,
   X,
 } from "lucide-react";
 import Image from "next/image";
@@ -64,7 +67,7 @@ export default function CreateFoodPage() {
       setCategoryLoading(true);
       try {
         const res = await guestService.category.getCategories(1, 100);
-        setCategories(res.items);
+        setCategories(res.items || []);
       } catch (err) {
         console.error("Failed to fetch categories:", err);
         setCategories([]);
@@ -105,16 +108,11 @@ export default function CreateFoodPage() {
       );
     }
 
-    setImageFiles(validFiles);
-    setImagePreviews(
-      validFiles.map((file) => URL.createObjectURL(file)),
+    setImageFiles((prev) => [...prev, ...validFiles]);
+    const newPreviews = validFiles.map((file) =>
+      URL.createObjectURL(file),
     );
-    if (validFiles.length > 0) {
-      showNotification(
-        `Đã chọn ${validFiles.length} ảnh phụ`,
-        "success",
-      );
-    }
+    setImagePreviews((prev) => [...prev, ...newPreviews]);
   };
 
   const handleRemoveGalleryImage = (idx: number) => {
@@ -288,9 +286,18 @@ export default function CreateFoodPage() {
     }
   };
 
+  const selectedCategoryName =
+    categories.find((c) => c.id === form.categoryId)?.name ||
+    "Chưa phân loại";
+
+  const numPrice = Number(form.price) || 0;
+  const numDiscount = Number(form.discountPercent) || 0;
+  const discountedPrice =
+    numDiscount > 0 ? numPrice * (1 - numDiscount / 100) : numPrice;
+
   return (
     <div className="min-h-screen py-8 px-3 sm:px-6">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         {/* Navigation back and Title */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <Button
@@ -298,293 +305,380 @@ export default function CreateFoodPage() {
             size="sm"
             onClick={() => router.back()}
             disabled={loading}
-            className="flex items-center gap-1.5 font-medium"
+            className="flex items-center gap-1.5 font-medium rounded-xl"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Quay lại thực đơn</span>
           </Button>
 
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              Thêm món ăn mới
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-              Cung cấp chi tiết món ăn, giá bán và hình ảnh hiển thị
-              cho thực khách
-            </p>
-          </div>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+            Thêm món mới vào menu
+          </span>
+        </div>
+
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            Thêm món ăn mới
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+            Cung cấp chi tiết món ăn, giá bán và hình ảnh hiển thị cho thực
+            khách
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Section 1: Basic Information */}
-          <div className="rounded-2xl border border-border bg-card shadow-2xs overflow-hidden">
-            <div className="bg-muted/50 px-6 py-3.5 border-b border-border/70 flex items-center gap-2.5">
-              <Tag className="w-4 h-4 text-primary" />
-              <h2 className="text-base font-bold text-foreground">
-                Thông tin cơ bản
-              </h2>
-            </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left 2 Cols: Form Fields */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Section 1: Basic Information */}
+              <div className="rounded-2xl border border-border bg-card shadow-2xs overflow-hidden">
+                <div className="bg-muted/50 px-6 py-3.5 border-b border-border/70 flex items-center gap-2.5">
+                  <Tag className="w-4 h-4 text-primary" />
+                  <h2 className="text-base font-bold text-foreground">
+                    Thông tin cơ bản
+                  </h2>
+                </div>
 
-            <div className="p-6 space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <FormField
-                  label="Tên món ăn"
-                  description="Tên món ăn sẽ hiển thị nổi bật trên menu"
-                  error={errors.name}
-                  required
-                >
-                  <Input
-                    id="foodName"
-                    name="name"
-                    value={form.name}
-                    onChange={handleChange}
-                    placeholder="Ví dụ: Cơm sườn nướng mật ong"
-                    disabled={loading}
-                    className="h-10 rounded-xl"
-                  />
-                </FormField>
+                <div className="p-6 space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <FormField
+                      label="Tên món ăn"
+                      description="Tên món ăn sẽ hiển thị nổi bật trên menu"
+                      error={errors.name}
+                      required
+                    >
+                      <Input
+                        id="foodName"
+                        name="name"
+                        value={form.name}
+                        onChange={handleChange}
+                        placeholder="Ví dụ: Cơm sườn nướng mật ong"
+                        disabled={loading}
+                        className="h-10 rounded-xl"
+                      />
+                    </FormField>
 
-                <FormField
-                  label="Giá bán (VNĐ)"
-                  description="Giá niêm yết của món ăn"
-                  error={errors.price}
-                  required
-                >
-                  <Input
-                    id="foodPrice"
-                    name="price"
-                    type="number"
-                    value={form.price}
-                    onChange={handleChange}
-                    placeholder="Ví dụ: 45000"
-                    disabled={loading}
-                    min="1000"
-                    className="h-10 rounded-xl"
-                  />
-                </FormField>
+                    <FormField
+                      label="Giá bán (VNĐ)"
+                      description="Giá niêm yết của món ăn"
+                      error={errors.price}
+                      required
+                    >
+                      <Input
+                        id="foodPrice"
+                        name="price"
+                        type="number"
+                        value={form.price}
+                        onChange={handleChange}
+                        placeholder="Ví dụ: 45000"
+                        disabled={loading}
+                        min="1000"
+                        className="h-10 rounded-xl"
+                      />
+                    </FormField>
 
-                <FormField
-                  label="Giảm giá (%)"
-                  description="Phần trăm khuyến mãi áp dụng riêng cho món này"
-                  error={errors.discountPercent}
-                >
-                  <Input
-                    id="foodDiscount"
-                    name="discountPercent"
-                    type="number"
-                    value={form.discountPercent}
-                    onChange={handleChange}
-                    placeholder="0"
-                    min="0"
-                    max="100"
-                    disabled={loading}
-                    className="h-10 rounded-xl"
-                  />
-                </FormField>
+                    <FormField
+                      label="Giảm giá (%)"
+                      description="Phần trăm khuyến mãi áp dụng riêng cho món này"
+                      error={errors.discountPercent}
+                    >
+                      <Input
+                        id="foodDiscount"
+                        name="discountPercent"
+                        type="number"
+                        value={form.discountPercent}
+                        onChange={handleChange}
+                        placeholder="0"
+                        min="0"
+                        max="100"
+                        disabled={loading}
+                        className="h-10 rounded-xl"
+                      />
+                    </FormField>
 
-                <FormField
-                  label="Danh mục món ăn"
-                  description="Nhóm danh mục phân loại món"
-                  error={errors.categoryId}
-                  required
-                >
-                  <Select
-                    value={form.categoryId}
-                    onValueChange={(value) => {
-                      setForm((prev) => ({
-                        ...prev,
-                        categoryId: value,
-                      }));
-                      if (errors.categoryId) {
+                    <FormField
+                      label="Danh mục món ăn"
+                      description="Nhóm danh mục phân loại món"
+                      error={errors.categoryId}
+                      required
+                    >
+                      <Select
+                        value={form.categoryId}
+                        onValueChange={(value) => {
+                          setForm((prev) => ({
+                            ...prev,
+                            categoryId: value,
+                          }));
+                          if (errors.categoryId) {
+                            setErrors((prev) => {
+                              const next = { ...prev };
+                              delete next.categoryId;
+                              return next;
+                            });
+                          }
+                        }}
+                        disabled={categoryLoading || loading}
+                      >
+                        <SelectTrigger
+                          id="foodCategory"
+                          className="h-10 rounded-xl"
+                        >
+                          <SelectValue placeholder="Chọn danh mục" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.id}>
+                              {cat.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormField>
+
+                    <FormField
+                      label="Thời gian chế biến (phút)"
+                      description="Thời gian dự kiến để làm xong món"
+                      error={errors.preparationTime}
+                    >
+                      <Input
+                        id="foodPrepTime"
+                        name="preparationTime"
+                        type="number"
+                        value={form.preparationTime}
+                        onChange={handleChange}
+                        placeholder="Ví dụ: 15"
+                        min="1"
+                        disabled={loading}
+                        className="h-10 rounded-xl"
+                      />
+                    </FormField>
+                  </div>
+
+                  <FormField
+                    label="Mô tả món ăn"
+                    description="Mô tả hương vị, nguyên liệu, khẩu phần để thực khách dễ lựa chọn"
+                    error={errors.description}
+                  >
+                    <Textarea
+                      id="foodDescription"
+                      name="description"
+                      value={form.description}
+                      onChange={handleChange}
+                      placeholder="Mô tả món ăn, gia vị đặc trưng, thành phần dinh dưỡng..."
+                      rows={3}
+                      disabled={loading}
+                      className="rounded-xl resize-none"
+                    />
+                  </FormField>
+                </div>
+              </div>
+
+              {/* Section 2: Image Upload */}
+              <div className="rounded-2xl border border-border bg-card shadow-2xs overflow-hidden">
+                <div className="bg-muted/50 px-6 py-3.5 border-b border-border/70 flex items-center gap-2.5">
+                  <Camera className="w-4 h-4 text-primary" />
+                  <h2 className="text-base font-bold text-foreground">
+                    Hình ảnh món ăn
+                  </h2>
+                </div>
+
+                <div className="p-6 space-y-6">
+                  {/* Cover Image with FileUpload */}
+                  <FileUpload
+                    label="Ảnh đại diện món ăn *"
+                    description="Hình ảnh chính hiển thị trong danh sách và tìm kiếm (PNG, JPG, WEBP tối đa 5MB)"
+                    value={preview}
+                    onChange={(file, previewUrl) => {
+                      setImageFile(file);
+                      setPreview(previewUrl);
+                      if (errors.image) {
                         setErrors((prev) => {
                           const next = { ...prev };
-                          delete next.categoryId;
+                          delete next.image;
                           return next;
                         });
                       }
                     }}
-                    disabled={categoryLoading || loading}
-                  >
-                    <SelectTrigger
-                      id="foodCategory"
-                      className="h-10 rounded-xl"
-                    >
-                      <SelectValue placeholder="Chọn danh mục" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-
-                <FormField
-                  label="Thời gian chế biến (phút)"
-                  description="Thời gian dự kiến để làm xong món"
-                  error={errors.preparationTime}
-                >
-                  <Input
-                    id="foodPrepTime"
-                    name="preparationTime"
-                    type="number"
-                    value={form.preparationTime}
-                    onChange={handleChange}
-                    placeholder="Ví dụ: 15"
-                    min="1"
+                    maxSizeMB={5}
+                    isUploading={loading}
+                    uploadProgress={
+                      uploadProgress > 0 ? uploadProgress : undefined
+                    }
                     disabled={loading}
-                    className="h-10 rounded-xl"
+                    error={errors.image}
                   />
-                </FormField>
-              </div>
 
-              <FormField
-                label="Mô tả món ăn"
-                description="Mô tả hương vị, nguyên liệu, khẩu phần để thực khách dễ lựa chọn"
-                error={errors.description}
-              >
-                <Textarea
-                  id="foodDescription"
-                  name="description"
-                  value={form.description}
-                  onChange={handleChange}
-                  placeholder="Mô tả món ăn, gia vị đặc trưng, thành phần dinh dưỡng..."
-                  rows={3}
-                  disabled={loading}
-                  className="rounded-xl resize-none"
-                />
-              </FormField>
-            </div>
-          </div>
+                  {/* Gallery Images */}
+                  <div className="space-y-3 pt-4 border-t border-border/60">
+                    <div className="flex items-baseline justify-between">
+                      <label className="text-sm font-semibold text-foreground">
+                        Thư viện ảnh bổ sung (Tùy chọn)
+                      </label>
+                      <span className="text-xs text-muted-foreground">
+                        Tối đa 5MB mỗi ảnh
+                      </span>
+                    </div>
 
-          {/* Section 2: Image Upload */}
-          <div className="rounded-2xl border border-border bg-card shadow-2xs overflow-hidden">
-            <div className="bg-muted/50 px-6 py-3.5 border-b border-border/70 flex items-center gap-2.5">
-              <Camera className="w-4 h-4 text-primary" />
-              <h2 className="text-base font-bold text-foreground">
-                Hình ảnh món ăn
-              </h2>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Cover Image with FileUpload */}
-              <FileUpload
-                label="Ảnh đại diện món ăn *"
-                description="Hình ảnh chính hiển thị trong danh sách và tìm kiếm (PNG, JPG, WEBP tối đa 5MB)"
-                value={preview}
-                onChange={(file, previewUrl) => {
-                  setImageFile(file);
-                  setPreview(previewUrl);
-                  if (errors.image) {
-                    setErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.image;
-                      return next;
-                    });
-                  }
-                }}
-                maxSizeMB={5}
-                isUploading={loading}
-                uploadProgress={
-                  uploadProgress > 0 ? uploadProgress : undefined
-                }
-                disabled={loading}
-                error={errors.image}
-              />
-
-              {/* Gallery Images */}
-              <div className="space-y-3 pt-4 border-t border-border/60">
-                <div className="flex items-baseline justify-between">
-                  <label className="text-sm font-semibold text-foreground">
-                    Thư viện ảnh bổ sung (Tùy chọn)
-                  </label>
-                  <span className="text-xs text-muted-foreground">
-                    Tối đa 5MB mỗi ảnh
-                  </span>
-                </div>
-
-                <div className="border-2 border-dashed border-border rounded-xl p-4 text-center hover:bg-muted/20 transition-colors">
-                  <Input
-                    id="foodGallery"
-                    type="file"
-                    accept="image/png, image/jpeg, image/webp"
-                    multiple
-                    onChange={handleImageUrlsChange}
-                    className="hidden"
-                    disabled={loading}
-                  />
-                  <label
-                    htmlFor="foodGallery"
-                    className="cursor-pointer flex flex-col items-center gap-2 py-2"
-                  >
-                    <Plus className="w-6 h-6 text-primary" />
-                    <span className="text-xs font-medium text-foreground">
-                      Thêm nhiều ảnh phụ cho món ăn
-                    </span>
-                  </label>
-                </div>
-
-                {imagePreviews.length > 0 && (
-                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 pt-2">
-                    {imagePreviews.map((src, idx) => (
-                      <div
-                        key={idx}
-                        className="relative h-20 w-full overflow-hidden rounded-xl border border-border bg-muted group"
+                    <div className="border-2 border-dashed border-border rounded-xl p-4 text-center hover:bg-muted/20 transition-colors">
+                      <Input
+                        id="foodGallery"
+                        type="file"
+                        accept="image/png, image/jpeg, image/webp"
+                        multiple
+                        onChange={handleImageUrlsChange}
+                        className="hidden"
+                        disabled={loading}
+                      />
+                      <label
+                        htmlFor="foodGallery"
+                        className="cursor-pointer flex flex-col items-center gap-2 py-2"
                       >
+                        <Plus className="w-6 h-6 text-primary" />
+                        <span className="text-xs font-medium text-foreground">
+                          Thêm nhiều ảnh phụ cho món ăn
+                        </span>
+                      </label>
+                    </div>
+
+                    {imagePreviews.length > 0 && (
+                      <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 pt-2">
+                        {imagePreviews.map((src, idx) => (
+                          <div
+                            key={idx}
+                            className="relative h-20 w-full overflow-hidden rounded-xl border border-border bg-muted group"
+                          >
+                            <Image
+                              src={src}
+                              alt={`Ảnh phụ ${idx + 1}`}
+                              fill
+                              className="object-cover"
+                              sizes="100px"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveGalleryImage(idx)}
+                              aria-label={`Xóa ảnh phụ ${idx + 1}`}
+                              className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-80 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Col: Live Customer Card Preview & Submit */}
+            <div className="space-y-6">
+              {/* Live Preview Card */}
+              <div className="rounded-2xl border border-border bg-card shadow-2xs overflow-hidden sticky top-20">
+                <div className="bg-muted/50 px-4 py-3 border-b border-border/70 flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-bold text-foreground">
+                    Xem trước hiển thị với khách
+                  </h3>
+                </div>
+
+                <div className="p-4 space-y-4">
+                  {/* Food Card Preview */}
+                  <div className="rounded-2xl border border-border overflow-hidden bg-card shadow-xs group">
+                    <div className="relative aspect-4/3 w-full bg-muted overflow-hidden">
+                      {preview ? (
                         <Image
-                          src={src}
-                          alt={`Ảnh phụ ${idx + 1}`}
+                          src={preview}
+                          alt="Xem trước món ăn"
                           fill
                           className="object-cover"
-                          sizes="100px"
+                          sizes="300px"
                         />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleRemoveGalleryImage(idx)
-                          }
-                          aria-label={`Xóa ảnh phụ ${idx + 1}`}
-                          className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-80 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
+                          <UtensilsCrossed className="w-8 h-8 opacity-40" />
+                          <span className="text-xs">Chưa có ảnh món</span>
+                        </div>
+                      )}
+
+                      {numDiscount > 0 && (
+                        <div className="absolute top-2.5 left-2.5 bg-red-600 text-white font-bold text-[11px] px-2 py-0.5 rounded-full shadow-xs">
+                          -{numDiscount}%
+                        </div>
+                      )}
+
+                      {form.preparationTime && (
+                        <div className="absolute bottom-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          <span>{form.preparationTime} phút</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-3.5 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">
+                          {selectedCategoryName}
+                        </span>
                       </div>
-                    ))}
+
+                      <h4 className="font-bold text-foreground text-sm line-clamp-1">
+                        {form.name || "Tên món ăn của bạn"}
+                      </h4>
+
+                      <p className="text-xs text-muted-foreground line-clamp-2 min-h-8">
+                        {form.description ||
+                          "Mô tả món ăn sẽ hiển thị tại đây khi thực khách lướt menu..."}
+                      </p>
+
+                      <div className="pt-2 border-t border-border flex items-baseline justify-between">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-base font-extrabold text-primary">
+                            {discountedPrice.toLocaleString("vi-VN")} đ
+                          </span>
+                          {numDiscount > 0 && (
+                            <span className="text-xs text-muted-foreground line-through">
+                              {numPrice.toLocaleString("vi-VN")} đ
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                )}
+
+                  {/* Action Buttons */}
+                  <div className="space-y-2.5 pt-2">
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full font-bold h-11 rounded-xl shadow-xs"
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          <span>Đang lưu ({uploadProgress}%)...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-1.5" />
+                          <span>Tạo món ăn</span>
+                        </>
+                      )}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => router.back()}
+                      disabled={loading}
+                      className="w-full rounded-xl"
+                    >
+                      Hủy bỏ
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Section 3: Submit Action */}
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.back()}
-              disabled={loading}
-            >
-              Hủy bỏ
-            </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="font-bold min-w-40 h-11 shadow-2xs"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  <span>Đang lưu ({uploadProgress}%)...</span>
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-1.5" />
-                  <span>Tạo món ăn</span>
-                </>
-              )}
-            </Button>
           </div>
         </form>
       </div>
