@@ -12,9 +12,10 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { HomeIcon, LoaderCircle, ShieldAlert } from "lucide-react";
+import { HomeIcon, LoaderCircle, ShieldAlert, Search } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { CommandPalette } from "@/components/ui/command-palette";
 
 
 
@@ -48,6 +49,18 @@ const pathMap: Record<string, { label: string; parent?: string }> = {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true); // New loading state
+  const [commandOpen, setCommandOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setCommandOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const { getToken, user } = useAuth();
   const pathname = usePathname();
@@ -133,11 +146,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     return (
       <UserProvider permissions={permissions}>
-      <div className="flex min-h-screen bg-muted/40">
+      <div className="flex min-h-screen bg-slate-50/70 dark:bg-muted/20">
         <Sidebar />
-        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
-          <div className="mx-auto max-w-[1600px] space-y-4">
-            <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
+        <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
+          {/* Sticky Modern Topbar */}
+          <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-border/70 bg-card/85 px-4 backdrop-blur-md supports-[backdrop-filter]:bg-card/75 sm:px-6 lg:px-8">
+            {/* Breadcrumb Trail */}
+            <div className="flex items-center gap-2">
               <Breadcrumb>
                 <BreadcrumbList>
                   <BreadcrumbItem>
@@ -163,11 +178,49 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </Breadcrumb>
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
+            {/* Quick Actions & Command Palette Trigger */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setCommandOpen(true)}
+                className="hidden md:flex items-center gap-2 rounded-xl border border-border/80 bg-muted/40 hover:bg-muted px-3 py-1.5 text-xs text-muted-foreground transition shadow-2xs hover:border-primary/40 focus:outline-none"
+              >
+                <Search className="h-3.5 w-3.5 text-primary" />
+                <span>Tìm nhanh (người dùng, đơn, quán)...</span>
+                <kbd className="ml-1 rounded bg-card border border-border px-1.5 py-0.5 text-[10px] font-mono font-semibold text-muted-foreground shadow-2xs">
+                  Ctrl K
+                </kbd>
+              </button>
+
+              <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Hệ thống trực tuyến</span>
+              </div>
+
+              <Link
+                href="/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden lg:inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-2xs transition hover:bg-muted"
+              >
+                <span>Trang khách</span>
+                <span className="text-muted-foreground text-xs">↗</span>
+              </Link>
+            </div>
+          </header>
+
+          {/* Main Content Area */}
+          <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+            <div className="mx-auto max-w-[1600px] space-y-4">
+              <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs sm:p-6">
               {children}
             </div>
           </div>
-        </main>
+          </main>
+        </div>
+
+        {/* Global Command Palette */}
+        <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
       </div>
     </UserProvider>
   );
