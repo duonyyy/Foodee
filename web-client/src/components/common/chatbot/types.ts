@@ -24,6 +24,7 @@ export interface ChatMessageModel {
   from: ChatSender;
   text?: string;
   foodCards?: FoodSuggestion[];
+  action?: string;
   createdAt: Date;
 }
 
@@ -45,7 +46,9 @@ export interface ChatApiResponse {
     | {
         reply?: string;
         suggestions?: FoodSuggestion[];
+        action?: string;
       };
   suggestions?: FoodSuggestion[];
+  action?: string;
   metadata?: Partial<ChatMetadata>;
 }

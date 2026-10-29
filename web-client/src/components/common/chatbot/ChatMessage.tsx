@@ -7,6 +7,7 @@ interface ChatMessageProps {
   message: ChatMessageModel;
   metadata: ChatMetadata;
   onSelectOrder: (message: string) => void;
+  onRequireAuth?: () => void;
 }
 
 const formatTime = (date: Date) =>
@@ -19,6 +20,7 @@ export default function ChatMessage({
   message,
   metadata,
   onSelectOrder,
+  onRequireAuth,
 }: ChatMessageProps) {
   const isUser = message.from === "user";
   const showQuickReorder =
@@ -57,6 +59,17 @@ export default function ChatMessage({
           >
             {message.text}
           </div>
+        )}
+
+        {!isUser && message.action === "requireAuth" && onRequireAuth && (
+          <button
+            type="button"
+            onClick={onRequireAuth}
+            className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-[1.02] active:scale-95"
+          >
+            <span>🔐 Đăng nhập tài khoản ngay</span>
+            <span aria-hidden="true">→</span>
+          </button>
         )}
 
         {!isUser && message.foodCards && message.foodCards.length > 0 && (

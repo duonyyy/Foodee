@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/context/auth-context";
+import { useAuthModal } from "@/context/modal-context";
 import { X } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -38,7 +39,7 @@ const initialMetadata: ChatMetadata = {
 
 const createMessage = (
   from: ChatMessageModel["from"],
-  data: Pick<ChatMessageModel, "text" | "foodCards">,
+  data: Pick<ChatMessageModel, "text" | "foodCards" | "action">,
 ): ChatMessageModel => ({
   id:
     typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -65,6 +66,14 @@ const getSuggestions = (data: ChatApiResponse): FoodSuggestion[] => {
   return Array.isArray(data.suggestions) ? data.suggestions : [];
 };
 
+const getAction = (data: ChatApiResponse): string | undefined => {
+  if (data.action) return data.action;
+  if (typeof data.reply !== "string" && data.reply?.action) {
+    return data.reply.action;
+  }
+  return undefined;
+};
+
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessageModel[]>([]);
@@ -77,6 +86,7 @@ export default function ChatWidget() {
 
   const chatRef = useRef<HTMLDivElement>(null);
   const { getToken } = useAuth();
+  const { openModal } = useAuthModal();
   const hasUnreadBotMessage =
     !open && messages.some((message) => message.from === "bot");
 
@@ -90,6 +100,16 @@ export default function ChatWidget() {
       behavior: "smooth",
     });
   }, [messages, isTyping, open]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && open) {
+        setOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open]);
 
   const sendMessage = useCallback(
     async (messageOverride?: string) => {
@@ -106,9 +126,11 @@ export default function ChatWidget() {
 
       try {
         const token = await getToken();
-        if (!token) {
-          console.error("[AUTH] Token không tồn tại!");
-          throw new Error("Chưa đăng nhập hoặc token không tồn tại");
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
         }
 
         const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
@@ -116,10 +138,7 @@ export default function ChatWidget() {
           `${apiBase}/chat`,
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
+            headers,
             body: JSON.stringify({
               userMessage: messageToSend,
               metadata,
@@ -142,91 +161,92 @@ export default function ChatWidget() {
           createMessage("bot", {
             text: getReplyText(data),
             foodCards: getSuggestions(data),
-          }),
-        ]);
+            action: getAction(data),
+            }),
+          ]);
 
-        setMetadata((prev) => ({
-          ...prev,
-          isOrdering: data.metadata?.isOrdering ?? prev.isOrdering,
-          isFoodConfirmed:
-            data.metadata?.isFoodConfirmed ?? prev.isFoodConfirmed,
-          isRestaurantConfirmed:
-            data.metadata?.isRestaurantConfirmed ??
-            prev.isRestaurantConfirmed,
-          isAddressConfirmed:
-            data.metadata?.isAddressConfirmed ??
-            prev.isAddressConfirmed,
-          isPaymentConfirmed:
-            data.metadata?.isPaymentConfirmed ??
-            prev.isPaymentConfirmed,
-          orderItems: data.metadata?.orderItems ?? prev.orderItems,
-          quickOrderOptions:
-            data.metadata?.quickOrderOptions ??
-            prev.quickOrderOptions,
-          isQuickReorder:
-            data.metadata?.isQuickReorder ?? prev.isQuickReorder,
-        }));
+          setMetadata((prev) => ({
+            ...prev,
+            isOrdering: data.metadata?.isOrdering ?? prev.isOrdering,
+            isFoodConfirmed:
+              data.metadata?.isFoodConfirmed ?? prev.isFoodConfirmed,
+            isRestaurantConfirmed:
+              data.metadata?.isRestaurantConfirmed ??
+              prev.isRestaurantConfirmed,
+            isAddressConfirmed:
+              data.metadata?.isAddressConfirmed ??
+              prev.isAddressConfirmed,
+            isPaymentConfirmed:
+              data.metadata?.isPaymentConfirmed ??
+              prev.isPaymentConfirmed,
+            orderItems: data.metadata?.orderItems ?? prev.orderItems,
+            quickOrderOptions:
+              data.metadata?.quickOrderOptions ??
+              prev.quickOrderOptions,
+            isQuickReorder:
+              data.metadata?.isQuickReorder ?? prev.isQuickReorder,
+          }));
 
-        receiveSound?.play();
-      } catch (err) {
-        if (err instanceof Error) {
-          console.log("[BOT ERROR]", err.message);
-          console.log("[BOT ERROR STACK]", err.stack);
-        } else {
-          console.log("[BOT ERROR]", err);
+          receiveSound?.play();
+        } catch (err) {
+          console.error("[BOT ERROR]", err);
+          const errorText =
+            err instanceof Error && err.message && !err.message.includes("Token không tồn tại")
+              ? err.message
+              : "Xin lỗi, hệ thống AI đang bận một chút. Bạn thử lại sau vài giây nhé!";
+
+          setMessages((prev) => [
+            ...prev,
+            createMessage("bot", {
+              text: errorText,
+            }),
+          ]);
+        } finally {
+          setIsTyping(false);
         }
+      },
+      [getToken, input, isTyping, metadata],
+    );
 
-        setMessages((prev) => [
-          ...prev,
-          createMessage("bot", {
-            text: "Xin lỗi, đã có lỗi xảy ra khi gửi tin nhắn. Vui lòng thử lại sau.",
-          }),
-        ]);
-      } finally {
-        setIsTyping(false);
-      }
-    },
-    [getToken, input, isTyping, metadata],
-  );
-
-  return (
-    <section
-      className="fixed bottom-4 right-4 z-[60] sm:bottom-6 sm:right-6"
-      aria-label="Foodee Assistant"
-    >
-      <div
-        className={`origin-bottom-right transition-all duration-300 ease-out ${
-          open
-            ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
-            : "pointer-events-none translate-y-3 scale-95 opacity-0"
-        }`}
+    return (
+      <section
+        className="fixed bottom-4 right-4 z-[60] sm:bottom-6 sm:right-6"
+        aria-label="Foodee Assistant"
       >
-        {open && (
-          <div
-            className="flex h-[70vh] w-[calc(100vw-24px)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 sm:h-[560px] sm:w-[380px]"
-            role="dialog"
-            aria-modal="false"
-            aria-labelledby="foodee-assistant-title"
-          >
-            <div id="foodee-assistant-title" className="sr-only">
-              Foodee Assistant
-            </div>
-            <ChatHeader onClose={() => setOpen(false)} />
-
+        <div
+          className={`origin-bottom-right transition-all duration-300 ease-out ${
+            open
+              ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
+              : "pointer-events-none translate-y-3 scale-95 opacity-0"
+          }`}
+        >
+          {open && (
             <div
-              ref={chatRef}
-              className="flex-1 space-y-4 overflow-y-auto bg-slate-50/80 px-4 py-4"
-              aria-live="polite"
+              className="flex h-[70vh] w-[calc(100vw-24px)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 sm:h-[560px] sm:w-[380px]"
+              role="dialog"
+              aria-modal="false"
+              aria-labelledby="foodee-assistant-title"
             >
-              {messages.length === 0 && !isTyping ? (
-                <EmptyState onSelectSuggestion={sendMessage} />
-              ) : (
-                messages.map((message) => (
+              <div id="foodee-assistant-title" className="sr-only">
+                Foodee Assistant
+              </div>
+              <ChatHeader onClose={() => setOpen(false)} />
+
+              <div
+                ref={chatRef}
+                className="flex-1 space-y-4 overflow-y-auto bg-slate-50/80 px-4 py-4"
+                aria-live="polite"
+              >
+                {messages.length === 0 && !isTyping ? (
+                  <EmptyState onSelectSuggestion={sendMessage} />
+                ) : (
+                  messages.map((message) => (
                   <ChatMessage
                     key={message.id}
                     message={message}
                     metadata={metadata}
                     onSelectOrder={sendMessage}
+                    onRequireAuth={() => openModal("login")}
                   />
                 ))
               )}
