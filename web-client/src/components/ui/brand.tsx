@@ -34,10 +34,20 @@ const Brand = ({
       />
     </span>
     <span className="leading-none">
-      <span className="block text-2xl font-extrabold tracking-normal text-foreground">
+      <span
+        className={cn(
+          "block text-2xl font-extrabold tracking-normal",
+          variant === "light" ? "text-white" : "text-foreground",
+        )}
+      >
         Foodee
       </span>
-      <span className="mt-1 block text-xs font-semibold uppercase text-primary">
+      <span
+        className={cn(
+          "mt-1 block text-xs font-semibold uppercase",
+          variant === "light" ? "text-emerald-400" : "text-primary",
+        )}
+      >
         Fresh delivery
       </span>
     </span>

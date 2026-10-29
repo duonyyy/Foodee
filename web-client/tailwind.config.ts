@@ -70,13 +70,11 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["var(--font-montserrat)", "Montserrat", "sans-serif"],
+        sans: ["var(--font-be-vietnam-pro)", "sans-serif"],
         display: [
           "var(--font-display)",
-          "Georgia",
-          "Cambria",
-          '"Times New Roman"',
-          "serif",
+          "var(--font-be-vietnam-pro)",
+          "sans-serif",
         ],
       },
       colors: {

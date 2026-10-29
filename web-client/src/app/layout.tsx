@@ -1,15 +1,14 @@
 import { AuthProvider } from "@/context/auth-context";
 import type { Metadata } from "next";
-import { NextFont } from "next/dist/compiled/@next/font";
-import { Montserrat } from "next/font/google";
+import { Be_Vietnam_Pro } from "next/font/google";
 import React from "react";
 import "../styles/globals.css";
 
-const montserrat: NextFont = Montserrat({
+const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700", "800"],
   display: "swap",
-  variable: "--font-montserrat",
+  variable: "--font-be-vietnam-pro",
 });
 export const metadata: Metadata = {
   title: "Foodee - Food Delivery App",
@@ -55,7 +54,7 @@ export default function RootLayout({
   // const isAdminPanel = pathname.startsWith("/admin");
   return (
     <html lang="vi">
-      <body className={`${montserrat.className} antialiased`}>
+      <body className={`${beVietnamPro.className} ${beVietnamPro.variable} antialiased`}>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
